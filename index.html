@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Space Color Cube Puzzle</title>
+<style>
+    * { box-sizing: border-box; user-select: none; }
+    body {
+        margin: 0; padding: 0;
+        background-color: #070810;
+        color: #fff; font-family: 'Segoe UI', sans-serif;
+        overflow: hidden; touch-action: none;
+    }
+
+    /* Distinct Cosmic Background */
+    #space-bg {
+        position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
+        background-image: 
+            radial-gradient(circle at 15% 30%, rgba(60, 20, 100, 0.6) 0%, transparent 40%),
+            radial-gradient(circle at 85% 70%, rgba(20, 60, 120, 0.5) 0%, transparent 45%),
+            radial-gradient(circle at 50% 10%, rgba(30, 80, 100, 0.3) 0%, transparent 35%);
+        z-index: 0;
+    }
+    .star {
+        position: absolute; background-color: #fff; border-radius: 50%;
+        box-shadow: 0 0 4px 1px rgba(255, 255, 255, 0.5);
+        animation: twinkle infinite ease-in-out;
+    }
+    @keyframes twinkle {
+        0%, 100% { opacity: 0.1; transform: scale(0.8); }
+        50% { opacity: 0.8; transform: scale(1.1); }
+    }
+
+    /* UI Layer */
+    #ui-layer {
+        position: absolute; top: 0; left: 0; width: 100%;
+        display: flex; flex-direction: column; align-items: center;
+        z-index: 10; pointer-events: none;
+    }
+    h1 { margin: 15px 0 5px 0; font-size: 22px; text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 0 10px rgba(0,0,0,0.8); }
+    p.instructions { font-size: 14px; color: #ddd; margin: 0 0 20px 0; text-align: center; max-width: 320px; text-shadow: 0 0 5px #000; }
+
+    #tubes { display: flex; gap: 12px; pointer-events: auto; }
+    .tube {
+        width: 35px; height: 60px;
+        border-radius: 0 0 15px 15px;
+        border: 2px solid rgba(255,255,255,0.9);
+        border-top: none; cursor: pointer; position: relative;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.8), 0 0 15px rgba(255,255,255,0.2);
+        transition: transform 0.1s;
+    }
+    .tube:active { transform: scale(0.9); }
+    .tube::before {
+        content: ''; position: absolute; top: 0; left: 0; right: 0; height: 15px;
+        background: linear-gradient(rgba(255,255,255,0.8), transparent);
+    }
+
+    /* Droplet Animation Element */
+    .paint-drop {
+        position: fixed; width: 10px; height: 24px; border-radius: 5px;
+        pointer-events: none; z-index: 9999;
+    }
+
+    /* 3D Scene */
+    #scene {
+        position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
+        perspective: 1400px; z-index: 1;
+    }
+
+    #cube {
+        position: absolute; top: 50%; left: 50%;
+        width: 0; height: 0;
+        transform-style: preserve-3d;
+        cursor: grab;
+    }
+    #cube:active { cursor: grabbing; }
+
+    /* Clearly Visible Opaque Blocks (Bright Silver) */
+    .cubelet {
+        position: absolute; width: 36px; height: 36px;
+        transform-style: preserve-3d;
+    }
+    .c-face {
+        position: absolute; width: 36px; height: 36px;
+        background: #e2e8f0; 
+        border: 1px solid #94a3b8;
+        border-radius: 4px;
+        box-shadow: inset 0 0 8px rgba(0,0,0,0.2);
+        transition: background-color 0.2s, border-color 0.2s, box-shadow 0.2s;
+    }
+    .c-face.front  { transform: translateZ(18px); }
+    .c-face.back   { transform: rotateY(180deg) translateZ(18px); }
+    .c-face.left   { transform: rotateY(-90deg) translateZ(18px); }
+    .c-face.right  { transform: rotateY(90deg) translateZ(18px); }
+    .c-face.top    { transform: rotateX(90deg) translateZ(18px); }
+    .c-face.bottom { transform: rotateX(-90deg) translateZ(18px); }
+
+    /* Inlet Hole */
+    .hole {
+        position: absolute; top: 50%; left: 50%;
+        width: 18px; height: 18px;
+        background: #111; border-radius: 50%;
+        transform: translate(-50%, -50%);
+        box-shadow: inset 0 3px 8px rgba(0,0,0,1);
+        border: 2px solid #94a3b8;
+        transition: all 0.3s ease;
+    }
+    .active-top-hole {
+        border-color: #fff !important;
+        box-shadow: 0 0 18px 4px #fff, inset 0 3px 8px #000 !important;
+    }
+
+    /* Clearly Visible Opaque Pipes (Darker Silver) */
+    .pipe { position: absolute; transform-style: preserve-3d; }
+    .p-face {
+        position: absolute; width: 100%; height: 100%;
+        background: #cbd5e1; 
+        border: 1px solid #64748b;
+        box-shadow: inset 0 0 6px rgba(0,0,0,0.3);
+        transition: background-color 0.2s, border-color 0.2s, box-shadow 0.2s;
+    }
+    .p-face.front  { transform: translateZ(4px); }
+    .p-face.back   { transform: rotateY(180deg) translateZ(4px); }
+    .p-face.left   { transform: rotateY(-90deg) translateZ(4px); }
+    .p-face.right  { transform: rotateY(90deg) translateZ(4px); }
+
+</style>
+</head>
+<body>
+
+    <div id="space-bg"></div>
+
+    <div id="ui-layer">
+        <h1>Trace & Match</h1>
+        <p class="instructions">Trace the pipes to find the target colors. Tap tubes to pour the matching paint into the top inlet!</p>
+        <div id="tubes"></div>
+    </div>
+
+    <div id="scene">
+        <div id="cube"></div>
+    </div>
+
+<script>
+    // Build Starry Background
+    const spaceBg = document.getElementById('space-bg');
+    for (let i = 0; i < 150; i++) {
+        let star = document.createElement('div');
+        star.className = 'star';
+        let size = Math.random() * 2 + 1;
+        star.style.width = size + 'px'; star.style.height = size + 'px';
+        star.style.left = Math.random() * 100 + 'vw'; star.style.top = Math.random() * 100 + 'vh';
+        star.style.animationDuration = (Math.random() * 4 + 2) + 's';
+        star.style.animationDelay = (Math.random() * 4) + 's';
+        spaceBg.appendChild(star);
+    }
+
+    const COLORS =['#ff3b30', '#34c759', '#007aff', '#ffcc00', '#ff9500', '#af52de'];
+    const CUBE = document.getElementById('cube');
+    let cubeMatrix = new DOMMatrix().rotate(-25, 35, 0); 
+    
+    // Distances
+    const SPACING = 85; 
+    const DEPTH = 145; 
+
+    let paths =[]; 
+    let blockColor = new Array(54).fill(null);
+    let pipeElements = {}; 
+    let isAnimating = false;
+
+    // Connectivity Graph
+    let adj = Array.from({length: 54}, () =>[]);
+    function addE(f1, b1, f2, b2) {
+        let g1 = f1 * 9 + b1, g2 = f2 * 9 + b2;
+        adj[g1].push(g2); adj[g2].push(g1);
+    }
+    
+    for(let f=0; f<6; f++) {
+        addE(f,0, f,1); addE(f,1, f,2); addE(f,3, f,4); addE(f,4, f,5); addE(f,6, f,7); addE(f,7, f,8);
+        addE(f,0, f,3); addE(f,1, f,4); addE(f,2, f,5); addE(f,3, f,6); addE(f,4, f,7); addE(f,5, f,8);
+    }
+    const interEdges = [[0,0, 4,6],[0,1, 4,7],[0,2, 4,8],[0,2, 2,0],[0,5, 2,3],[0,8, 2,6],[0,6, 5,0],[0,7, 5,1],[0,8, 5,2],[0,0, 3,2],[0,3, 3,5],[0,6, 3,8],[1,0, 4,2],[1,1, 4,1],[1,2, 4,0],[1,2, 3,0],[1,5, 3,3],[1,8, 3,6],[1,6, 5,8],[1,7, 5,7],[1,8, 5,6],[1,0, 2,2],[1,3, 2,5],[1,6, 2,8],
+        [2,0, 4,8],[2,1, 4,5],[2,2, 4,2],[2,6, 5,2],[2,7, 5,5],[2,8, 5,8],[3,0, 4,0],[3,1, 4,3],[3,2, 4,6],[3,6, 5,6],[3,7, 5,3],[3,8, 5,0]
+    ];
+    interEdges.forEach(e => addE(e[0], e[1], e[2], e[3]));
+    adj = adj.map(n => [...new Set(n)]);
+
+    // Generate strict paths
+    function generatePaths() {
+        let tempPaths = [[4],[13], [22], [31],[40], [49]];
+        let visited = new Array(54).fill(false);
+        tempPaths.forEach(p => visited[p[0]] = true);
+
+        function dfs(pIdx, step) {
+            if (pIdx === 6) return true;
+            if (step === 8) return dfs(pIdx + 1, 0);
+
+            let curr = tempPaths[pIdx][step];
+            let neighbors = adj[curr].filter(n => !visited[n]);
+            neighbors.sort((a,b) => adj[a].filter(n=>!visited[n]).length - adj[b].filter(n=>!visited[n]).length);
+
+            for (let n of neighbors) {
+                visited[n] = true;
+                tempPaths[pIdx].push(n);
+                if (dfs(pIdx, step + 1)) return true;
+                tempPaths[pIdx].pop();
+                visited[n] = false;
+            }
+            return false;
+        }
+        dfs(0, 0);
+        paths = tempPaths;
+    }
+
+    function getFaceTransform(f) {
+        return['', 'rotateY(180deg)', 'rotateY(90deg)', 'rotateY(-90deg)', 'rotateX(90deg)', 'rotateX(-90deg)'][f];
+    }
+
+    function getGlobalPos(f, b) {
+        let lx = ((b % 3) - 1) * SPACING, ly = (Math.floor(b / 3) - 1) * SPACING, lz = DEPTH; 
+        let gx, gy, gz;
+        switch(f) {
+            case 0: gx = lx; gy = ly; gz = lz; break;
+            case 1: gx = -lx; gy = ly; gz = -lz; break;
+            case 2: gx = lz; gy = ly; gz = -lx; break;
+            case 3: gx = -lz; gy = ly; gz = lx; break;
+            case 4: gx = lx; gy = -lz; gz = ly; break;
+            case 5: gx = lx; gy = lz; gz = -ly; break;
+        }
+        return {x: gx, y: gy, z: gz};
+    }
+
+    function build3DEnvironment() {
+        for(let f=0; f<6; f++) {
+            for(let b=0; b<9; b++) {
+                let g = f*9 + b;
+                let lx = ((b % 3) - 1) * SPACING, ly = (Math.floor(b / 3) - 1) * SPACING;
+                
+                let c = document.createElement('div');
+                c.className = 'cubelet';
+                c.id = 'cubelet_' + g;
+                c.style.transform = `${getFaceTransform(f)} translate3d(${lx}px, ${ly}px, ${DEPTH}px) translate3d(-18px, -18px, -18px)`;['front','back','left','right','top','bottom'].forEach(fn => {
+                    let face = document.createElement('div');
+                    face.className = 'c-face ' + fn;
+                    c.appendChild(face);
+                });
+
+                if (b === 4) {
+                    let hole = document.createElement('div');
+                    hole.className = 'hole';
+                    hole.id = 'hole_' + f;
+                    c.querySelector('.front').appendChild(hole);
+                }
+                CUBE.appendChild(c);
+            }
+        }
+
+        paths.forEach(path => {
+            for(let i=0; i<path.length-1; i++) {
+                let g1 = path[i], g2 = path[i+1];
+                let p1 = getGlobalPos(Math.floor(g1/9), g1%9);
+                let p2 = getGlobalPos(Math.floor(g2/9), g2%9);
+                
+                let dx = p2.x - p1.x, dy = p2.y - p1.y, dz = p2.z - p1.z;
+                let dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+                let cx = p1.x + dx/2, cy = p1.y + dy/2, cz = p1.z + dz/2;
+                
+                let ax = dz, ay = 0, az = -dx;
+                let len = Math.sqrt(ax*ax + az*az);
+                let angle = Math.acos(dy / dist) * 180 / Math.PI;
+
+                if (len < 0.001) { ax = 1; az = 0; angle = dy < 0 ? 180 : 0; } else { ax /= len; az /= len; }
+
+                let pipe = document.createElement('div');
+                pipe.className = 'pipe';
+                pipe.style.width = '8px'; pipe.style.height = dist + 'px';
+                pipe.style.transform = `translate3d(${cx - 4}px, ${cy - dist/2}px, ${cz}px) rotate3d(${ax}, ${ay}, ${az}, ${angle}deg)`;
+                
+                ['front','back','left','right'].forEach(fn => {
+                    let pf = document.createElement('div');
+                    pf.className = 'p-face ' + fn;
+                    pipe.appendChild(pf);
+                });
+                
+                CUBE.appendChild(pipe);
+                let minG = Math.min(g1, g2), maxG = Math.max(g1, g2);
+                if (!pipeElements[minG]) pipeElements[minG] = {};
+                pipeElements[minG][maxG] = pipe;
+            }
+        });
+    }
+
+    function init() {
+        const tubesContainer = document.getElementById('tubes');
+        COLORS.forEach(color => {
+            let t = document.createElement('div');
+            t.className = 'tube';
+            t.style.backgroundColor = color;
+            t.onclick = (e) => triggerPourAnimation(color, e.currentTarget);
+            tubesContainer.appendChild(t);
+        });
+
+        generatePaths();
+        build3DEnvironment();
+
+        // Target Assigning: the last block of each path gets a random unique color
+        let shuffledColors = [...COLORS].sort(() => Math.random() - 0.5);
+        for(let i = 0; i < 6; i++) {
+            let targetBlock = paths[i][8];
+            blockColor[targetBlock] = shuffledColors[i];
+        }
+
+        CUBE.style.transform = cubeMatrix.toString();
+        updateHighlights();
+
+        // Paint the initial targets to visually guide the player
+        for(let i = 0; i < 6; i++) {
+            paintBlock(paths[i][8], blockColor[paths[i][8]]);
+        }
+    }
+
+    const faceNormals =[{f:0, x:0,y:0,z:1}, {f:1, x:0,y:0,z:-1}, {f:2, x:1,y:0,z:0}, {f:3, x:-1,y:0,z:0}, {f:4, x:0,y:-1,z:0}, {f:5, x:0,y:1,z:0}];
+    function getTopFaceId() {
+        let minY = Infinity, topId = -1;
+        for (let fn of faceNormals) {
+            let ny = cubeMatrix.m12 * fn.x + cubeMatrix.m22 * fn.y + cubeMatrix.m32 * fn.z;
+            if (ny < minY) { minY = ny; topId = fn.f; }
+        }
+        return topId;
+    }
+
+    function updateHighlights() {
+        document.querySelectorAll('.hole').forEach(h => h.classList.remove('active-top-hole'));
+        let top = getTopFaceId();
+        if (top !== -1) document.getElementById('hole_' + top).classList.add('active-top-hole');
+    }
+
+    // High Contrast Block/Pipe Painting Rules
+    function paintBlock(g, color) {
+        let cb = document.getElementById('cubelet_' + g);
+        cb.querySelectorAll('.c-face').forEach(f => {
+            f.style.backgroundColor = color ? color : '#e2e8f0'; // Bright silver default
+            f.style.borderColor = color ? color : '#94a3b8';
+            f.style.boxShadow = color ? `inset 0 0 15px rgba(0,0,0,0.4), 0 0 12px ${color}` : 'inset 0 0 8px rgba(0,0,0,0.2)';
+        });
+        if(g % 9 === 4) {
+             let hole = document.getElementById('hole_' + Math.floor(g/9));
+             if(hole) hole.style.backgroundColor = color ? color : '#111';
+        }
+    }
+
+    function paintPipe(g1, g2, color) {
+        let minG = Math.min(g1, g2), maxG = Math.max(g1, g2);
+        let p = pipeElements[minG][maxG];
+        if (!p) return;
+        p.querySelectorAll('.p-face').forEach(f => {
+            f.style.backgroundColor = color ? color : '#cbd5e1'; // Darker silver default
+            f.style.borderColor = color ? color : '#64748b';
+            f.style.boxShadow = color ? `0 0 12px ${color}` : 'inset 0 0 6px rgba(0,0,0,0.3)';
+        });
+    }
+
+    function finalizePipes() {
+        paths.forEach(path => {
+            for(let i=0; i<path.length-1; i++) {
+                let g1 = path[i], g2 = path[i+1];
+                let c1 = blockColor[g1], c2 = blockColor[g2];
+                // Pipe only solidifies color if it bridges two identical colored blocks
+                if (c1 && c2 && c1 === c2) paintPipe(g1, g2, c1);
+                else paintPipe(g1, g2, null);
+            }
+        });
+    }
+
+    // Advanced Tube Flying Animation
+    function triggerPourAnimation(color, tubeElement) {
+        if (isAnimating) return;
+        let topFace = getTopFaceId();
+        let path = paths[topFace];
+        
+        let targetIdx = -1;
+        // Search backwards. It will skip index 8 (which is pre-colored) and set index 7 as destination
+        for(let i = path.length - 1; i >= 0; i--) {
+            if (blockColor[path[i]] === null) { targetIdx = i; break; }
+        }
+        if (targetIdx === -1) return; 
+
+        isAnimating = true;
+
+        let tubeRect = tubeElement.getBoundingClientRect();
+        let hole = document.getElementById('hole_' + topFace);
+        let holeRect = hole.getBoundingClientRect();
+
+        let clone = tubeElement.cloneNode(true);
+        clone.style.position = 'fixed';
+        clone.style.left = tubeRect.left + 'px';
+        clone.style.top = tubeRect.top + 'px';
+        clone.style.margin = '0';
+        clone.style.zIndex = '9999';
+        clone.style.transition = 'none';
+        document.body.appendChild(clone);
+
+        // Hide original tube
+        tubeElement.style.opacity = '0';
+
+        let destX = holeRect.left + holeRect.width / 2 - tubeRect.left - tubeRect.width / 2;
+        let destY = holeRect.top - tubeRect.top - tubeRect.height + 15;
+
+        let moveIn = clone.animate([
+            { transform: 'translate(0px, 0px) rotate(0deg)' },
+            { transform: `translate(${destX}px, ${destY}px) rotate(20deg)` }
+        ], { duration: 400, easing: 'ease-in-out', fill: 'forwards' });
+
+        moveIn.onfinish = () => {
+            // Drop paint droplet into the hole
+            let drop = document.createElement('div');
+            drop.className = 'paint-drop';
+            drop.style.backgroundColor = color;
+            drop.style.boxShadow = `0 0 10px ${color}`;
+
+            let dropStartX = holeRect.left + holeRect.width / 2 - 5;
+            let dropStartY = holeRect.top - 15;
+            
+            drop.style.left = dropStartX + 'px';
+            drop.style.top = dropStartY + 'px';
+            document.body.appendChild(drop);
+
+            let dropAnim = drop.animate([
+                { transform: 'translate(0, 0) scale(1)' },
+                { transform: `translate(0px, ${holeRect.height / 2 + 15}px) scale(0.6)` }
+            ], { duration: 200, easing: 'ease-in' });
+
+            dropAnim.onfinish = () => {
+                drop.remove();
+
+                // Send Tube Back
+                let moveOut = clone.animate([
+                    { transform: `translate(${destX}px, ${destY}px) rotate(20deg)` },
+                    { transform: 'translate(0px, 0px) rotate(0deg)' }
+                ], { duration: 400, easing: 'ease-in-out', fill: 'forwards' });
+
+                moveOut.onfinish = () => {
+                    clone.remove();
+                    tubeElement.style.opacity = '1';
+                };
+
+                startInternalFlow(topFace, color, targetIdx, path);
+            };
+        };
+    }
+
+    // Physical Flowing Animation inside pipes
+    function startInternalFlow(topFace, color, targetIdx, path) {
+        let current = 0;
+        let flowInterval = setInterval(() => {
+            if (current > 0) {
+                let prev = path[current - 1];
+                paintBlock(prev, blockColor[prev]); 
+                if (current <= targetIdx) paintPipe(prev, path[current], null); 
+            }
+            if (current < targetIdx) {
+                let currB = path[current];
+                paintBlock(currB, color);
+                paintPipe(currB, path[current + 1], color);
+                current++;
+            } 
+            else if (current === targetIdx) {
+                clearInterval(flowInterval);
+                blockColor[path[targetIdx]] = color;
+                paintBlock(path[targetIdx], color);
+                
+                finalizePipes();
+                isAnimating = false;
+                checkWin();
+            }
+        }, 70);
+    }
+
+    function checkWin() {
+        let allFilled = true;
+        for(let i = 0; i < 54; i++) {
+            if(!blockColor[i]) { allFilled = false; break; }
+        }
+        if(!allFilled) return; // Wait until grid is full
+
+        let won = true;
+        for(let i = 0; i < 6; i++) {
+            let pathColor = blockColor[paths[i][0]];
+            for(let j = 1; j <= 8; j++) {
+                if (blockColor[paths[i][j]] !== pathColor) {
+                    won = false;
+                    break;
+                }
+            }
+        }
+        
+        if (won) setTimeout(() => alert('🎉 OUTSTANDING! You perfectly matched all colors!'), 300);
+        else setTimeout(() => alert('❌ Colors mismatched! Refresh the page to try again.'), 300);
+    }
+
+    // Drag Interaction Control
+    let isDragging = false, lastPos = {x:0, y:0};
+    document.addEventListener('pointerdown', e => {
+        if (e.target.closest('#tubes') || isAnimating) return; 
+        isDragging = true; lastPos = { x: e.clientX, y: e.clientY };
+    });
+    
+    document.addEventListener('pointermove', e => {
+        if (!isDragging) return;
+        let dx = e.clientX - lastPos.x, dy = e.clientY - lastPos.y;
+        lastPos = { x: e.clientX, y: e.clientY };
+        
+        let rot = new DOMMatrix().rotate(-dy * 0.4, dx * 0.4, 0);
+        cubeMatrix = rot.multiply(cubeMatrix);
+        
+        CUBE.style.transform = cubeMatrix.toString();
+        updateHighlights();
+    });
+    
+    document.addEventListener('pointerup', () => isDragging = false);
+
+    init();
+</script>
+</body>
+</html>

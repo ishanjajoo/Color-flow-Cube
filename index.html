@@ -76,7 +76,7 @@
     }
     #cube:active { cursor: grabbing; }
 
-    /* Clearly Visible Opaque Blocks (Bright Silver) */
+    /* Clearly Visible Opaque Blocks */
     .cubelet {
         position: absolute; width: 36px; height: 36px;
         transform-style: preserve-3d;
@@ -111,7 +111,7 @@
         box-shadow: 0 0 18px 4px #fff, inset 0 3px 8px #000 !important;
     }
 
-    /* Clearly Visible Opaque Pipes (Darker Silver) */
+    /* Clearly Visible Opaque Pipes */
     .pipe { position: absolute; transform-style: preserve-3d; }
     .p-face {
         position: absolute; width: 100%; height: 100%;
@@ -132,8 +132,8 @@
     <div id="space-bg"></div>
 
     <div id="ui-layer">
-        <h1>Trace & Match</h1>
-        <p class="instructions">Trace the pipes to find the target colors. Tap tubes to pour the matching paint into the top inlet!</p>
+        <h1>Match The Sides</h1>
+        <p class="instructions">Each side has 1 pre-colored block. You MUST pour the matching color into that side. Mixed colors = Game Over!</p>
         <div id="tubes"></div>
     </div>
 
@@ -167,8 +167,9 @@
     let blockColor = new Array(54).fill(null);
     let pipeElements = {}; 
     let isAnimating = false;
+    let faceTargetColors = new Array(6).fill(null);
 
-    // Connectivity Graph
+    // Connectivity Graph (Strictly Intra-face to ensure exactly 1 color per side)
     let adj = Array.from({length: 54}, () =>[]);
     function addE(f1, b1, f2, b2) {
         let g1 = f1 * 9 + b1, g2 = f2 * 9 + b2;
@@ -176,16 +177,16 @@
     }
     
     for(let f=0; f<6; f++) {
-        addE(f,0, f,1); addE(f,1, f,2); addE(f,3, f,4); addE(f,4, f,5); addE(f,6, f,7); addE(f,7, f,8);
-        addE(f,0, f,3); addE(f,1, f,4); addE(f,2, f,5); addE(f,3, f,6); addE(f,4, f,7); addE(f,5, f,8);
+        // Horizontal edges on the face
+        addE(f,0, f,1); addE(f,1, f,2);
+        addE(f,3, f,4); addE(f,4, f,5);
+        addE(f,6, f,7); addE(f,7, f,8);
+        // Vertical edges on the face
+        addE(f,0, f,3); addE(f,1, f,4); addE(f,2, f,5);
+        addE(f,3, f,6); addE(f,4, f,7); addE(f,5, f,8);
     }
-    const interEdges = [[0,0, 4,6],[0,1, 4,7],[0,2, 4,8],[0,2, 2,0],[0,5, 2,3],[0,8, 2,6],[0,6, 5,0],[0,7, 5,1],[0,8, 5,2],[0,0, 3,2],[0,3, 3,5],[0,6, 3,8],[1,0, 4,2],[1,1, 4,1],[1,2, 4,0],[1,2, 3,0],[1,5, 3,3],[1,8, 3,6],[1,6, 5,8],[1,7, 5,7],[1,8, 5,6],[1,0, 2,2],[1,3, 2,5],[1,6, 2,8],
-        [2,0, 4,8],[2,1, 4,5],[2,2, 4,2],[2,6, 5,2],[2,7, 5,5],[2,8, 5,8],[3,0, 4,0],[3,1, 4,3],[3,2, 4,6],[3,6, 5,6],[3,7, 5,3],[3,8, 5,0]
-    ];
-    interEdges.forEach(e => addE(e[0], e[1], e[2], e[3]));
-    adj = adj.map(n => [...new Set(n)]);
 
-    // Generate strict paths
+    // Generate strict paths constrained completely to their respective faces
     function generatePaths() {
         let tempPaths = [[4],[13], [22], [31],[40], [49]];
         let visited = new Array(54).fill(false);
@@ -303,19 +304,20 @@
         generatePaths();
         build3DEnvironment();
 
-        // Target Assigning: the last block of each path gets a random unique color
+        // Assign 1 Unique Color per Face to the final block
         let shuffledColors = [...COLORS].sort(() => Math.random() - 0.5);
-        for(let i = 0; i < 6; i++) {
-            let targetBlock = paths[i][8];
-            blockColor[targetBlock] = shuffledColors[i];
+        for(let f = 0; f < 6; f++) {
+            let targetBlockId = paths[f][8];
+            faceTargetColors[f] = shuffledColors[f];
+            blockColor[targetBlockId] = shuffledColors[f];
         }
 
         CUBE.style.transform = cubeMatrix.toString();
         updateHighlights();
 
-        // Paint the initial targets to visually guide the player
-        for(let i = 0; i < 6; i++) {
-            paintBlock(paths[i][8], blockColor[paths[i][8]]);
+        // Paint the initialized targets visually
+        for(let f = 0; f < 6; f++) {
+            paintBlock(paths[f][8], blockColor[paths[f][8]]);
         }
     }
 
@@ -339,7 +341,7 @@
     function paintBlock(g, color) {
         let cb = document.getElementById('cubelet_' + g);
         cb.querySelectorAll('.c-face').forEach(f => {
-            f.style.backgroundColor = color ? color : '#e2e8f0'; // Bright silver default
+            f.style.backgroundColor = color ? color : '#e2e8f0'; 
             f.style.borderColor = color ? color : '#94a3b8';
             f.style.boxShadow = color ? `inset 0 0 15px rgba(0,0,0,0.4), 0 0 12px ${color}` : 'inset 0 0 8px rgba(0,0,0,0.2)';
         });
@@ -354,7 +356,7 @@
         let p = pipeElements[minG][maxG];
         if (!p) return;
         p.querySelectorAll('.p-face').forEach(f => {
-            f.style.backgroundColor = color ? color : '#cbd5e1'; // Darker silver default
+            f.style.backgroundColor = color ? color : '#cbd5e1';
             f.style.borderColor = color ? color : '#64748b';
             f.style.boxShadow = color ? `0 0 12px ${color}` : 'inset 0 0 6px rgba(0,0,0,0.3)';
         });
@@ -365,27 +367,26 @@
             for(let i=0; i<path.length-1; i++) {
                 let g1 = path[i], g2 = path[i+1];
                 let c1 = blockColor[g1], c2 = blockColor[g2];
-                // Pipe only solidifies color if it bridges two identical colored blocks
                 if (c1 && c2 && c1 === c2) paintPipe(g1, g2, c1);
                 else paintPipe(g1, g2, null);
             }
         });
     }
 
-    // Advanced Tube Flying Animation
+    // Advanced Tube Flying & Validation Animation
     function triggerPourAnimation(color, tubeElement) {
         if (isAnimating) return;
         let topFace = getTopFaceId();
         let path = paths[topFace];
         
         let targetIdx = -1;
-        // Search backwards. It will skip index 8 (which is pre-colored) and set index 7 as destination
         for(let i = path.length - 1; i >= 0; i--) {
             if (blockColor[path[i]] === null) { targetIdx = i; break; }
         }
-        if (targetIdx === -1) return; 
+        if (targetIdx === -1) return; // Ignore if face is already fully filled
 
         isAnimating = true;
+        let isCorrectColor = (color === faceTargetColors[topFace]);
 
         let tubeRect = tubeElement.getBoundingClientRect();
         let hole = document.getElementById('hole_' + topFace);
@@ -400,19 +401,18 @@
         clone.style.transition = 'none';
         document.body.appendChild(clone);
 
-        // Hide original tube
         tubeElement.style.opacity = '0';
 
         let destX = holeRect.left + holeRect.width / 2 - tubeRect.left - tubeRect.width / 2;
         let destY = holeRect.top - tubeRect.top - tubeRect.height + 15;
 
+        // Tube moves to center block
         let moveIn = clone.animate([
             { transform: 'translate(0px, 0px) rotate(0deg)' },
             { transform: `translate(${destX}px, ${destY}px) rotate(20deg)` }
         ], { duration: 400, easing: 'ease-in-out', fill: 'forwards' });
 
         moveIn.onfinish = () => {
-            // Drop paint droplet into the hole
             let drop = document.createElement('div');
             drop.className = 'paint-drop';
             drop.style.backgroundColor = color;
@@ -433,7 +433,7 @@
             dropAnim.onfinish = () => {
                 drop.remove();
 
-                // Send Tube Back
+                // Send Tube Back immediately
                 let moveOut = clone.animate([
                     { transform: `translate(${destX}px, ${destY}px) rotate(20deg)` },
                     { transform: 'translate(0px, 0px) rotate(0deg)' }
@@ -444,9 +444,31 @@
                     tubeElement.style.opacity = '1';
                 };
 
-                startInternalFlow(topFace, color, targetIdx, path);
+                if (!isCorrectColor) {
+                    // Rule 2: GAME OVER state
+                    triggerGameOver();
+                } else {
+                    // Valid pour -> proceed with filling animation
+                    startInternalFlow(topFace, color, targetIdx, path);
+                }
             };
         };
+    }
+
+    function triggerGameOver() {
+        let overlay = document.createElement('div');
+        overlay.style.position = 'fixed';
+        overlay.style.top = '0'; overlay.style.left = '0';
+        overlay.style.width = '100vw'; overlay.style.height = '100vh';
+        overlay.style.backgroundColor = 'rgba(255, 0, 0, 0.4)';
+        overlay.style.zIndex = '10000';
+        overlay.style.pointerEvents = 'none';
+        document.body.appendChild(overlay);
+
+        setTimeout(() => {
+            alert("❌ GAME OVER!\nYou poured the wrong color. Each side must contain exactly 1 unique color!");
+            location.reload();
+        }, 100);
     }
 
     // Physical Flowing Animation inside pipes
@@ -477,28 +499,14 @@
     }
 
     function checkWin() {
-        let allFilled = true;
-        for(let i = 0; i < 54; i++) {
-            if(!blockColor[i]) { allFilled = false; break; }
+        // Rule 3: Win state when all 54 blocks perfectly filled
+        let filledBlocks = blockColor.filter(c => c !== null).length;
+        if (filledBlocks === 54) {
+            setTimeout(() => alert('🎉 YOU WIN! You perfectly mapped every color!'), 300);
         }
-        if(!allFilled) return; // Wait until grid is full
-
-        let won = true;
-        for(let i = 0; i < 6; i++) {
-            let pathColor = blockColor[paths[i][0]];
-            for(let j = 1; j <= 8; j++) {
-                if (blockColor[paths[i][j]] !== pathColor) {
-                    won = false;
-                    break;
-                }
-            }
-        }
-        
-        if (won) setTimeout(() => alert('🎉 OUTSTANDING! You perfectly matched all colors!'), 300);
-        else setTimeout(() => alert('❌ Colors mismatched! Refresh the page to try again.'), 300);
     }
 
-    // Drag Interaction Control
+    // Intuitive Drag Rotation
     let isDragging = false, lastPos = {x:0, y:0};
     document.addEventListener('pointerdown', e => {
         if (e.target.closest('#tubes') || isAnimating) return; 

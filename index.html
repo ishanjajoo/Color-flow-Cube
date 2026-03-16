@@ -78,14 +78,14 @@
     #cube { position: absolute; top: 50%; left: 50%; width: 0; height: 0; transform-style: preserve-3d; cursor: grab; }
     #cube:active { cursor: grabbing; }
 
-    /* White Glassy Blocks */
+    /* Solid Opaque Blocks */
     .cubelet { position: absolute; width: 36px; height: 36px; transform-style: preserve-3d; }
     .c-face {
         position: absolute; width: 36px; height: 36px; 
-        background: rgba(255, 255, 255, 0.15); 
-        border: 1px solid rgba(255, 255, 255, 0.6);
+        background: #f1f5f9; /* Solid off-white */
+        border: 1px solid #cbd5e1;
         border-radius: 4px; 
-        box-shadow: inset 0 0 15px rgba(255,255,255,0.5), inset 0 0 5px rgba(255,255,255,1);
+        box-shadow: inset 0 0 6px rgba(0,0,0,0.1);
         transition: all 0.2s;
     }
     .c-face.front  { transform: translateZ(18px); }
@@ -99,7 +99,7 @@
     .hole {
         position: absolute; top: 50%; left: 50%; width: 20px; height: 20px;
         background: #111; border-radius: 50%; transform: translate(-50%, -50%);
-        box-shadow: inset 0 3px 8px rgba(0,0,0,1); border: 2px solid rgba(255,255,255,0.8); transition: all 0.3s ease;
+        box-shadow: inset 0 3px 8px rgba(0,0,0,1); border: 2px solid #94a3b8; transition: all 0.3s ease;
     }
     .active-top-hole { border-color: #00ffff !important; box-shadow: 0 0 18px 4px rgba(0,255,255,0.8), inset 0 3px 8px #000 !important; }
 
@@ -109,9 +109,9 @@
         position: absolute; width: 100%; height: 100%; 
         background: #9ca3af; 
         border: 1px solid #6b7280;
-        box-shadow: inset 0 0 6px rgba(0,0,0,0.5); 
+        box-shadow: inset 0 0 6px rgba(0,0,0,0.3); 
         transition: all 0.2s;
-        overflow: hidden; /* Prevents visual bleeding of fluid layer */
+        overflow: hidden; /* Contains the fluid perfectly */
     }
     /* Creates perfectly centered 12x12 pipes */
     .p-face.front  { transform: translateZ(6px); }
@@ -187,7 +187,7 @@
     // Core Dimensions
     const SPACING = 85; 
     const DEPTH = 145; 
-    const CUBE_RADIUS = DEPTH - 18; 
+    const CUBE_RADIUS = DEPTH - 18; // Maps coordinates EXACTLY to the 3D center of every block!
 
     let currentLevel = 1;
     let cubeMatrix = new DOMMatrix().rotate(-25, 35, 0); 
@@ -223,7 +223,7 @@
             for(let i=0; i<numThrees; i++) targetFaceCounts[i] = 3;
             targetFaceCounts.sort(() => Math.random() - 0.5);
 
-            let tempPaths = [[4], [13],[22],[31], [40], [49]];
+            let tempPaths = [[4], [13],[22],[31], [40],[49]];
             let visited = new Array(54).fill(false);[4,13,22,31,40,49].forEach(n => visited[n] = true);
 
             let res = doDfs(0, 1, tempPaths, visited, targetFaceCounts, Date.now(), 40);
@@ -311,7 +311,9 @@
         pipe.className = 'pipe'; 
         pipe.style.width = '12px'; pipe.style.height = (dist + 2) + 'px'; 
         pipe.style.transformOrigin = '6px 0px 6px';
-        pipe.style.transform = `translate3d(${pStart.x - 6}px, ${pStart.y}px, ${pStart.z - 6}px) rotate3d(${ax}, ${ay}, ${az}, ${angle}deg) translateY(-1px)`;['front','back','left','right'].forEach(fn => {
+        pipe.style.transform = `translate3d(${pStart.x - 6}px, ${pStart.y}px, ${pStart.z - 6}px) rotate3d(${ax}, ${ay}, ${az}, ${angle}deg) translateY(-1px)`;
+        
+        ['front','back','left','right'].forEach(fn => {
             let pf = document.createElement('div'); pf.className = 'p-face ' + fn;
             let fluid = document.createElement('div'); fluid.className = 'fluid';
             pf.appendChild(fluid); pipe.appendChild(pf);
@@ -344,25 +346,7 @@
     function build3DEnvironment() {
         CUBE.innerHTML = ''; pipeElements = {};
 
-        // Draw Core Blocks
-        for(let f=0; f<6; f++) {
-            let fTrans =['', 'rotateY(180deg)', 'rotateY(90deg)', 'rotateY(-90deg)', 'rotateX(90deg)', 'rotateX(-90deg)'][f];
-            for(let b=0; b<9; b++) {
-                let g = f*9 + b;
-                let lx = ((b % 3) - 1) * SPACING, ly = (Math.floor(b / 3) - 1) * SPACING;
-                let c = document.createElement('div'); c.className = 'cubelet'; c.id = 'cubelet_' + g;
-                c.style.transform = `${fTrans} translate3d(${lx}px, ${ly}px, ${DEPTH}px) translate3d(-18px, -18px, -18px)`;['front','back','left','right','top','bottom'].forEach(fn => {
-                    let face = document.createElement('div'); face.className = 'c-face ' + fn; c.appendChild(face);
-                });
-                if (b === 4) {
-                    let hole = document.createElement('div'); hole.className = 'hole'; hole.id = 'hole_' + f;
-                    c.querySelector('.front').appendChild(hole);
-                }
-                CUBE.appendChild(c);
-            }
-        }
-
-        // Center-Connected 3D Rounded Pipes
+        // 1. Center-Connected 3D Rounded Pipes FIRST (Fixes CSS rendering order illusion)
         paths.forEach(path => {
             for(let i=0; i<path.length-1; i++) {
                 let g1 = path[i], g2 = path[i+1];
@@ -390,6 +374,24 @@
                 pipeElements[g1][g2] = segments; 
             }
         });
+
+        // 2. Draw Opaque Blocks SECOND
+        for(let f=0; f<6; f++) {
+            let fTrans =['', 'rotateY(180deg)', 'rotateY(90deg)', 'rotateY(-90deg)', 'rotateX(90deg)', 'rotateX(-90deg)'][f];
+            for(let b=0; b<9; b++) {
+                let g = f*9 + b;
+                let lx = ((b % 3) - 1) * SPACING, ly = (Math.floor(b / 3) - 1) * SPACING;
+                let c = document.createElement('div'); c.className = 'cubelet'; c.id = 'cubelet_' + g;
+                c.style.transform = `${fTrans} translate3d(${lx}px, ${ly}px, ${DEPTH}px) translate3d(-18px, -18px, -18px)`;['front','back','left','right','top','bottom'].forEach(fn => {
+                    let face = document.createElement('div'); face.className = 'c-face ' + fn; c.appendChild(face);
+                });
+                if (b === 4) {
+                    let hole = document.createElement('div'); hole.className = 'hole'; hole.id = 'hole_' + f;
+                    c.querySelector('.front').appendChild(hole);
+                }
+                CUBE.appendChild(c);
+            }
+        }
     }
 
     async function generateNewLevel() {
@@ -454,13 +456,14 @@
         setTimeout(() => finalizePipes(), 50); 
     }
 
+    // Opaque White Glassy CSS
     function paintBlock(g, color) {
         let cb = document.getElementById('cubelet_' + g);
         if(!cb) return;
         cb.querySelectorAll('.c-face').forEach(f => {
-            f.style.backgroundColor = color ? color : 'rgba(255, 255, 255, 0.15)'; 
-            f.style.borderColor = color ? color : 'rgba(255, 255, 255, 0.6)';
-            f.style.boxShadow = color ? `inset 0 0 15px rgba(0,0,0,0.4), 0 0 12px ${color}` : 'inset 0 0 15px rgba(255,255,255,0.5), inset 0 0 5px rgba(255,255,255,1)';
+            f.style.backgroundColor = color ? color : '#f1f5f9'; 
+            f.style.borderColor = color ? color : '#cbd5e1';
+            f.style.boxShadow = color ? `inset 0 0 15px rgba(0,0,0,0.4), 0 0 12px ${color}` : 'inset 0 0 6px rgba(0,0,0,0.1)';
         });
         if(g % 9 === 4) {
              let hole = document.getElementById('hole_' + Math.floor(g/9));
@@ -552,7 +555,7 @@
     }
 
     async function startInternalFlow(topFace, color, targetIdx, path, isCorrectColor) {
-        // Step 1: Forward fluid flow down pipes ONLY. Bypassing paintBlock to prevent blocks from visually lighting up prematurely
+        // Skips lighting up intermediate blocks so fluid stays strictly IN pipes
         for (let i = 0; i < targetIdx; i++) {
             let currB = path[i], nextB = path[i+1];
             
@@ -571,12 +574,12 @@
             }
         }
 
-        // Settles permanently into the target block
+        // Settles directly into the target block at the end
         let targetB = path[targetIdx];
         blockColor[targetB] = color; 
         paintBlock(targetB, color);
 
-        // Step 2: Draining the tail of liquid from the path.
+        // Drains the trailing liquid smoothly out of the pipes
         for (let i = 0; i < targetIdx; i++) {
             let currB = path[i], nextB = path[i+1];
             

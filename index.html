@@ -3,17 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Space Color Cube Puzzle</title>
+<title>Space Color Flow 3D</title>
 <style>
     * { box-sizing: border-box; user-select: none; }
     body {
-        margin: 0; padding: 0;
-        background-color: #070810;
+        margin: 0; padding: 0; background-color: #070810;
         color: #fff; font-family: 'Segoe UI', sans-serif;
         overflow: hidden; touch-action: none;
     }
 
-    /* Distinct Cosmic Background */
+    /* Cosmic Background */
     #space-bg {
         position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
         background-image: 
@@ -24,8 +23,7 @@
     }
     .star {
         position: absolute; background-color: #fff; border-radius: 50%;
-        box-shadow: 0 0 4px 1px rgba(255, 255, 255, 0.5);
-        animation: twinkle infinite ease-in-out;
+        box-shadow: 0 0 4px 1px rgba(255, 255, 255, 0.5); animation: twinkle infinite ease-in-out;
     }
     @keyframes twinkle {
         0%, 100% { opacity: 0.1; transform: scale(0.8); }
@@ -35,20 +33,26 @@
     /* UI Layer */
     #ui-layer {
         position: absolute; top: 0; left: 0; width: 100%;
-        display: flex; flex-direction: column; align-items: center;
-        z-index: 10; pointer-events: none;
+        display: flex; flex-direction: column; align-items: center; z-index: 10; pointer-events: none;
     }
     h1 { margin: 15px 0 5px 0; font-size: 22px; text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 0 10px rgba(0,0,0,0.8); }
-    p.instructions { font-size: 14px; color: #ddd; margin: 0 0 20px 0; text-align: center; max-width: 320px; text-shadow: 0 0 5px #000; }
+    p.instructions { font-size: 13px; color: #ddd; margin: 0 0 10px 0; text-align: center; max-width: 340px; text-shadow: 0 0 5px #000; }
+
+    /* Controls */
+    .controls-bar { display: flex; gap: 10px; margin-bottom: 15px; align-items: center; pointer-events: auto; }
+    #level-display { font-weight: bold; font-size: 18px; margin-right: 10px; color: #ffcc00; text-shadow: 0 0 8px rgba(255, 204, 0, 0.8);}
+    .btn {
+        background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3);
+        color: white; padding: 6px 14px; border-radius: 4px; cursor: pointer;
+        font-size: 14px; transition: 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    }
+    .btn:active { transform: translateY(2px); background: rgba(255,255,255,0.2); }
 
     #tubes { display: flex; gap: 12px; pointer-events: auto; }
     .tube {
-        width: 35px; height: 60px;
-        border-radius: 0 0 15px 15px;
-        border: 2px solid rgba(255,255,255,0.9);
-        border-top: none; cursor: pointer; position: relative;
-        box-shadow: 0 5px 15px rgba(0,0,0,0.8), 0 0 15px rgba(255,255,255,0.2);
-        transition: transform 0.1s;
+        width: 35px; height: 60px; border-radius: 0 0 15px 15px;
+        border: 2px solid rgba(255,255,255,0.9); border-top: none; cursor: pointer; position: relative;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.8), 0 0 15px rgba(255,255,255,0.2); transition: transform 0.1s;
     }
     .tube:active { transform: scale(0.9); }
     .tube::before {
@@ -56,38 +60,33 @@
         background: linear-gradient(rgba(255,255,255,0.8), transparent);
     }
 
-    /* Droplet Animation Element */
-    .paint-drop {
-        position: fixed; width: 10px; height: 24px; border-radius: 5px;
-        pointer-events: none; z-index: 9999;
+    .paint-drop { position: fixed; width: 10px; height: 24px; border-radius: 5px; pointer-events: none; z-index: 9999; }
+
+    /* Overlays */
+    .overlay {
+        position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+        background: rgba(0,0,0,0.85); display: none; flex-direction: column; align-items: center; justify-content: center;
+        z-index: 10000; pointer-events: auto;
     }
+    .overlay h2 { font-size: 32px; margin-bottom: 10px; }
+    .overlay p { font-size: 16px; margin-bottom: 25px; text-align: center; max-width: 300px; }
+    .overlay .btn-group { display: flex; gap: 15px; }
+    .overlay .btn { padding: 12px 24px; font-size: 16px; font-weight: bold; background: #007aff; border-color: #007aff;}
 
     /* 3D Scene */
-    #scene {
-        position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
-        perspective: 1400px; z-index: 1;
-    }
-
-    #cube {
-        position: absolute; top: 50%; left: 50%;
-        width: 0; height: 0;
-        transform-style: preserve-3d;
-        cursor: grab;
-    }
+    #scene { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; perspective: 1400px; z-index: 1; }
+    #cube { position: absolute; top: 50%; left: 50%; width: 0; height: 0; transform-style: preserve-3d; cursor: grab; }
     #cube:active { cursor: grabbing; }
 
-    /* Clearly Visible Opaque Blocks */
-    .cubelet {
-        position: absolute; width: 36px; height: 36px;
-        transform-style: preserve-3d;
-    }
+    /* White Glassy Blocks */
+    .cubelet { position: absolute; width: 36px; height: 36px; transform-style: preserve-3d; }
     .c-face {
-        position: absolute; width: 36px; height: 36px;
-        background: #e2e8f0; 
-        border: 1px solid #94a3b8;
-        border-radius: 4px;
-        box-shadow: inset 0 0 8px rgba(0,0,0,0.2);
-        transition: background-color 0.2s, border-color 0.2s, box-shadow 0.2s;
+        position: absolute; width: 36px; height: 36px; 
+        background: rgba(255, 255, 255, 0.15); 
+        border: 1px solid rgba(255, 255, 255, 0.6);
+        border-radius: 4px; 
+        box-shadow: inset 0 0 15px rgba(255,255,255,0.5), inset 0 0 5px rgba(255,255,255,1);
+        transition: all 0.2s;
     }
     .c-face.front  { transform: translateZ(18px); }
     .c-face.back   { transform: rotateY(180deg) translateZ(18px); }
@@ -98,33 +97,35 @@
 
     /* Inlet Hole */
     .hole {
-        position: absolute; top: 50%; left: 50%;
-        width: 18px; height: 18px;
-        background: #111; border-radius: 50%;
-        transform: translate(-50%, -50%);
-        box-shadow: inset 0 3px 8px rgba(0,0,0,1);
-        border: 2px solid #94a3b8;
-        transition: all 0.3s ease;
+        position: absolute; top: 50%; left: 50%; width: 20px; height: 20px;
+        background: #111; border-radius: 50%; transform: translate(-50%, -50%);
+        box-shadow: inset 0 3px 8px rgba(0,0,0,1); border: 2px solid rgba(255,255,255,0.8); transition: all 0.3s ease;
     }
-    .active-top-hole {
-        border-color: #fff !important;
-        box-shadow: 0 0 18px 4px #fff, inset 0 3px 8px #000 !important;
-    }
+    /* Bright Neon Cyan to pop out against the white glass */
+    .active-top-hole { border-color: #00ffff !important; box-shadow: 0 0 18px 4px rgba(0,255,255,0.8), inset 0 3px 8px #000 !important; }
 
-    /* Clearly Visible Opaque Pipes */
+    /* Distinct Solid Grey Pipes */
     .pipe { position: absolute; transform-style: preserve-3d; }
     .p-face {
-        position: absolute; width: 100%; height: 100%;
-        background: #cbd5e1; 
-        border: 1px solid #64748b;
-        box-shadow: inset 0 0 6px rgba(0,0,0,0.3);
-        transition: background-color 0.2s, border-color 0.2s, box-shadow 0.2s;
+        position: absolute; width: 100%; height: 100%; 
+        background: #9ca3af; 
+        border: 1px solid #6b7280;
+        box-shadow: inset 0 0 6px rgba(0,0,0,0.5); 
+        transition: all 0.2s;
     }
-    .p-face.front  { transform: translateZ(4px); }
-    .p-face.back   { transform: rotateY(180deg) translateZ(4px); }
-    .p-face.left   { transform: rotateY(-90deg) translateZ(4px); }
-    .p-face.right  { transform: rotateY(90deg) translateZ(4px); }
+    /* Creates perfectly centered 12x12 pipes */
+    .p-face.front  { transform: translateZ(6px); }
+    .p-face.back   { transform: rotateY(180deg) translateZ(6px); }
+    .p-face.left   { transform: rotateY(-90deg) translateZ(6px); }
+    .p-face.right  { transform: rotateY(90deg) translateZ(6px); }
+    .p-face.top    { transform: rotateX(90deg) translateZ(6px); }
+    .p-face.bottom { transform: rotateX(-90deg) translateZ(6px); }
 
+    /* Animated Liquid Inside Pipes */
+    .fluid {
+        position: absolute; top: 0%; left: 0%; width: 100%; height: 0%;
+        background: transparent; transition: none;
+    }
 </style>
 </head>
 <body>
@@ -132,8 +133,15 @@
     <div id="space-bg"></div>
 
     <div id="ui-layer">
-        <h1>Match The Sides</h1>
-        <p class="instructions">Each side has 1 pre-colored block. You MUST pour the matching color into that side. Mixed colors = Game Over!</p>
+        <h1>Fluid Flow 3D</h1>
+        <p class="instructions">Trace the Series to the next empty block. Pour the color of the Face that block sits on!</p>
+        
+        <div class="controls-bar">
+            <span id="level-display">Level 1</span>
+            <button class="btn" onclick="undo()">Undo</button>
+            <button class="btn" onclick="restartLevel()">Restart</button>
+        </div>
+
         <div id="tubes"></div>
     </div>
 
@@ -141,12 +149,30 @@
         <div id="cube"></div>
     </div>
 
+    <!-- Overlays -->
+    <div id="overlay-loading" class="overlay">
+        <h2 style="color: #007aff;">Generating Level...</h2>
+    </div>
+
+    <div id="overlay-gameover" class="overlay">
+        <h2 style="color: #ff3b30;">Wrong Color!</h2>
+        <p>You poured a color that doesn't match the face the block resides on. 1 color per face!</p>
+        <div class="btn-group">
+            <button class="btn" onclick="undo()">Undo Move</button>
+            <button class="btn" onclick="restartLevel()" style="background: #333; border-color: #333;">Restart</button>
+        </div>
+    </div>
+
+    <div id="overlay-win" class="overlay">
+        <h2 style="color: #34c759;">Level Complete!</h2>
+        <div class="btn-group"><button class="btn" onclick="nextLevel()">Next Level</button></div>
+    </div>
+
 <script>
-    // Build Starry Background
+    // Background Init
     const spaceBg = document.getElementById('space-bg');
     for (let i = 0; i < 150; i++) {
-        let star = document.createElement('div');
-        star.className = 'star';
+        let star = document.createElement('div'); star.className = 'star';
         let size = Math.random() * 2 + 1;
         star.style.width = size + 'px'; star.style.height = size + 'px';
         star.style.left = Math.random() * 100 + 'vw'; star.style.top = Math.random() * 100 + 'vh';
@@ -157,168 +183,255 @@
 
     const COLORS =['#ff3b30', '#34c759', '#007aff', '#ffcc00', '#ff9500', '#af52de'];
     const CUBE = document.getElementById('cube');
-    let cubeMatrix = new DOMMatrix().rotate(-25, 35, 0); 
     
-    // Distances
+    // Core Dimensions
     const SPACING = 85; 
     const DEPTH = 145; 
+    const CUBE_RADIUS = DEPTH - 18; 
 
+    let currentLevel = 1;
+    let cubeMatrix = new DOMMatrix().rotate(-25, 35, 0); 
     let paths =[]; 
     let blockColor = new Array(54).fill(null);
-    let pipeElements = {}; 
-    let isAnimating = false;
     let faceTargetColors = new Array(6).fill(null);
+    let pipeElements = {}; 
+    let history =[];
+    let isAnimating = false;
+    let isGameOver = false;
 
-    // Connectivity Graph (Strictly Intra-face to ensure exactly 1 color per side)
+    // Mathematical Map of Connections
     let adj = Array.from({length: 54}, () =>[]);
     function addE(f1, b1, f2, b2) {
         let g1 = f1 * 9 + b1, g2 = f2 * 9 + b2;
         adj[g1].push(g2); adj[g2].push(g1);
     }
-    
     for(let f=0; f<6; f++) {
-        // Horizontal edges on the face
-        addE(f,0, f,1); addE(f,1, f,2);
-        addE(f,3, f,4); addE(f,4, f,5);
-        addE(f,6, f,7); addE(f,7, f,8);
-        // Vertical edges on the face
-        addE(f,0, f,3); addE(f,1, f,4); addE(f,2, f,5);
-        addE(f,3, f,6); addE(f,4, f,7); addE(f,5, f,8);
+        addE(f,0,f,1); addE(f,1,f,2); addE(f,3,f,4); addE(f,4,f,5); addE(f,6,f,7); addE(f,7,f,8);
+        addE(f,0,f,3); addE(f,1,f,4); addE(f,2,f,5); addE(f,3,f,6); addE(f,4,f,7); addE(f,5,f,8);
     }
+    const interEdges = [[0,0,4,6],[0,1,4,7],[0,2,4,8],[0,2,2,0],[0,5,2,3],[0,8,2,6],[0,6,5,0],[0,7,5,1],[0,8,5,2],[0,0,3,2],[0,3,3,5],[0,6,3,8],[1,0,4,2],[1,1,4,1],[1,2,4,0],[1,2,3,0],[1,5,3,3],[1,8,3,6],[1,6,5,8],[1,7,5,7],[1,8,5,6],[1,0,2,2],[1,3,2,5],[1,6,2,8],[2,0,4,8],[2,1,4,5],[2,2,4,2],[2,6,5,2],[2,7,5,5],[2,8,5,8],[3,0,4,0],[3,1,4,3],[3,2,4,6],[3,6,5,6],[3,7,5,3],[3,8,5,0]];
+    interEdges.forEach(e => addE(e[0], e[1], e[2], e[3]));
+    adj = adj.map(n => [...new Set(n)]);
 
-    // Generate strict paths constrained completely to their respective faces
-    function generatePaths() {
-        let tempPaths = [[4],[13], [22], [31],[40], [49]];
-        let visited = new Array(54).fill(false);
-        tempPaths.forEach(p => visited[p[0]] = true);
+    // Generates Adaptive Levels
+    function generatePathsForLevel(targetLevel) {
+        let numThrees = Math.min(targetLevel - 1, 6);
+        let success = false;
+        
+        for (let attempt = 0; attempt < 30; attempt++) {
+            let targetFaceCounts = new Array(6).fill(2);
+            for(let i=0; i<numThrees; i++) targetFaceCounts[i] = 3;
+            targetFaceCounts.sort(() => Math.random() - 0.5);
 
-        function dfs(pIdx, step) {
-            if (pIdx === 6) return true;
-            if (step === 8) return dfs(pIdx + 1, 0);
+            let tempPaths = [[4], [13],[22],[31], [40], [49]];
+            let visited = new Array(54).fill(false);[4,13,22,31,40,49].forEach(n => visited[n] = true);
 
-            let curr = tempPaths[pIdx][step];
-            let neighbors = adj[curr].filter(n => !visited[n]);
-            neighbors.sort((a,b) => adj[a].filter(n=>!visited[n]).length - adj[b].filter(n=>!visited[n]).length);
-
-            for (let n of neighbors) {
-                visited[n] = true;
-                tempPaths[pIdx].push(n);
-                if (dfs(pIdx, step + 1)) return true;
-                tempPaths[pIdx].pop();
-                visited[n] = false;
-            }
-            return false;
+            let res = doDfs(0, 1, tempPaths, visited, targetFaceCounts, Date.now(), 40);
+            if (res) { paths = res; success = true; break; }
         }
-        dfs(0, 0);
-        paths = tempPaths;
+
+        if (!success) paths = [[4,1,2,5,8,7,6,3,0],[13,10,11,14,17,16,15,12,9],[22,19,20,23,26,25,24,21,18],[31,28,29,32,35,34,33,30,27],[40,37,38,41,44,43,42,39,36],[49,46,47,50,53,52,51,48,45]];
     }
 
-    function getFaceTransform(f) {
-        return['', 'rotateY(180deg)', 'rotateY(90deg)', 'rotateY(-90deg)', 'rotateX(90deg)', 'rotateX(-90deg)'][f];
+    function doDfs(pIdx, step, tempPaths, visited, targetFaceCounts, startTime, timeLimit) {
+        if (Date.now() - startTime > timeLimit) return null;
+        if (pIdx === 6) return JSON.parse(JSON.stringify(tempPaths));
+        if (step === 9) {
+            let faceSet = new Set(tempPaths[pIdx].map(n => Math.floor(n/9)));
+            if (faceSet.size !== targetFaceCounts[pIdx]) return null;
+            return doDfs(pIdx + 1, 1, tempPaths, visited, targetFaceCounts, startTime, timeLimit);
+        }
+        
+        let curr = tempPaths[pIdx][step - 1];
+        let neighbors = adj[curr].filter(n => !visited[n]);
+        let faceSet = new Set(tempPaths[pIdx].map(n => Math.floor(n/9)));
+        let validNeighbors =[];
+        
+        for (let n of neighbors) {
+            let nFace = Math.floor(n / 9);
+            let createsNewFace = !faceSet.has(nFace);
+            if (createsNewFace && faceSet.size >= targetFaceCounts[pIdx]) continue; 
+            
+            let neededFaces = targetFaceCounts[pIdx] - faceSet.size;
+            if (!createsNewFace && (9 - step) <= neededFaces) continue; 
+            
+            validNeighbors.push({ n, deg: adj[n].filter(x => !visited[x]).length + Math.random() });
+        }
+        validNeighbors.sort((a, b) => a.deg - b.deg);
+        
+        for (let v of validNeighbors) {
+            visited[v.n] = true; tempPaths[pIdx].push(v.n);
+            let res = doDfs(pIdx, step + 1, tempPaths, visited, targetFaceCounts, startTime, timeLimit);
+            if (res) return res;
+            tempPaths[pIdx].pop(); visited[v.n] = false;
+        }
+        return null;
+    }
+
+    // Geometry Helpers
+    function normalize(dx, dy, dz) {
+        let len = Math.hypot(dx, dy, dz);
+        if (len === 0) return {x:0, y:0, z:0};
+        return {x: dx/len, y: dy/len, z: dz/len};
     }
 
     function getGlobalPos(f, b) {
-        let lx = ((b % 3) - 1) * SPACING, ly = (Math.floor(b / 3) - 1) * SPACING, lz = DEPTH; 
-        let gx, gy, gz;
+        let lx = ((b % 3) - 1) * SPACING, ly = (Math.floor(b / 3) - 1) * SPACING; 
         switch(f) {
-            case 0: gx = lx; gy = ly; gz = lz; break;
-            case 1: gx = -lx; gy = ly; gz = -lz; break;
-            case 2: gx = lz; gy = ly; gz = -lx; break;
-            case 3: gx = -lz; gy = ly; gz = lx; break;
-            case 4: gx = lx; gy = -lz; gz = ly; break;
-            case 5: gx = lx; gy = lz; gz = -ly; break;
+            case 0: return {x: lx, y: ly, z: CUBE_RADIUS};
+            case 1: return {x: -lx, y: ly, z: -CUBE_RADIUS};
+            case 2: return {x: CUBE_RADIUS, y: ly, z: -lx};
+            case 3: return {x: -CUBE_RADIUS, y: ly, z: lx};
+            case 4: return {x: lx, y: -CUBE_RADIUS, z: ly};
+            case 5: return {x: lx, y: CUBE_RADIUS, z: -ly};
         }
-        return {x: gx, y: gy, z: gz};
+    }
+
+    function getOuterCorner(p1, p2) {
+        let c1, c2;
+        if (p1.x === p2.x) { c1 = {x: p1.x, y: p2.y, z: p1.z}; c2 = {x: p1.x, y: p1.y, z: p2.z}; }
+        else if (p1.y === p2.y) { c1 = {x: p1.x, y: p1.y, z: p2.z}; c2 = {x: p2.x, y: p1.y, z: p1.z}; }
+        else { c1 = {x: p1.x, y: p2.y, z: p1.z}; c2 = {x: p2.x, y: p1.y, z: p1.z}; }
+        
+        let m1 = c1.x*c1.x + c1.y*c1.y + c1.z*c1.z;
+        let m2 = c2.x*c2.x + c2.y*c2.y + c2.z*c2.z;
+        return m1 > m2 ? c1 : c2;
+    }
+
+    function createPipeDOM(pStart, pEnd) {
+        let dx = pEnd.x - pStart.x, dy = pEnd.y - pStart.y, dz = pEnd.z - pStart.z;
+        let dist = Math.hypot(dx, dy, dz);
+        let ax = dz, ay = 0, az = -dx;
+        let len = Math.hypot(ax, az);
+        let angle = Math.acos(dy / dist) * 180 / Math.PI;
+        
+        if (len < 0.001) { ax = 1; az = 0; angle = dy < 0 ? 180 : 0; } else { ax /= len; az /= len; }
+
+        let pipe = document.createElement('div');
+        pipe.className = 'pipe'; 
+        pipe.style.width = '12px'; pipe.style.height = (dist + 2) + 'px'; 
+        pipe.style.transformOrigin = '6px 0px 6px';
+        pipe.style.transform = `translate3d(${pStart.x - 6}px, ${pStart.y}px, ${pStart.z - 6}px) rotate3d(${ax}, ${ay}, ${az}, ${angle}deg) translateY(-1px)`;
+        
+        ['front','back','left','right'].forEach(fn => {
+            let pf = document.createElement('div'); pf.className = 'p-face ' + fn;
+            let fluid = document.createElement('div'); fluid.className = 'fluid';
+            pf.appendChild(fluid); pipe.appendChild(pf);
+        });
+        CUBE.appendChild(pipe); return pipe;
+    }
+
+    function createRoundedCorner(C, v1, v2, R) {
+        let segments =[];
+        let CenterArc = { x: C.x + v1.x*R + v2.x*R, y: C.y + v1.y*R + v2.y*R, z: C.z + v1.z*R + v2.z*R };
+        let u = { x: -v2.x*R, y: -v2.y*R, z: -v2.z*R };
+        let v = { x: -v1.x*R, y: -v1.y*R, z: -v1.z*R };
+        
+        let steps = 6; 
+        let lastP = { x: C.x + v1.x*R, y: C.y + v1.y*R, z: C.z + v1.z*R };
+        
+        for (let i = 1; i <= steps; i++) {
+            let t = (i / steps) * (Math.PI / 2);
+            let nextP = {
+                x: CenterArc.x + u.x * Math.cos(t) + v.x * Math.sin(t),
+                y: CenterArc.y + u.y * Math.cos(t) + v.y * Math.sin(t),
+                z: CenterArc.z + u.z * Math.cos(t) + v.z * Math.sin(t)
+            };
+            segments.push(createPipeDOM(lastP, nextP));
+            lastP = nextP;
+        }
+        return segments;
     }
 
     function build3DEnvironment() {
+        CUBE.innerHTML = ''; pipeElements = {};
+
+        // Draw Core Blocks
         for(let f=0; f<6; f++) {
+            let fTrans =['', 'rotateY(180deg)', 'rotateY(90deg)', 'rotateY(-90deg)', 'rotateX(90deg)', 'rotateX(-90deg)'][f];
             for(let b=0; b<9; b++) {
                 let g = f*9 + b;
                 let lx = ((b % 3) - 1) * SPACING, ly = (Math.floor(b / 3) - 1) * SPACING;
-                
-                let c = document.createElement('div');
-                c.className = 'cubelet';
-                c.id = 'cubelet_' + g;
-                c.style.transform = `${getFaceTransform(f)} translate3d(${lx}px, ${ly}px, ${DEPTH}px) translate3d(-18px, -18px, -18px)`;['front','back','left','right','top','bottom'].forEach(fn => {
-                    let face = document.createElement('div');
-                    face.className = 'c-face ' + fn;
-                    c.appendChild(face);
+                let c = document.createElement('div'); c.className = 'cubelet'; c.id = 'cubelet_' + g;
+                c.style.transform = `${fTrans} translate3d(${lx}px, ${ly}px, ${DEPTH}px) translate3d(-18px, -18px, -18px)`;['front','back','left','right','top','bottom'].forEach(fn => {
+                    let face = document.createElement('div'); face.className = 'c-face ' + fn; c.appendChild(face);
                 });
-
                 if (b === 4) {
-                    let hole = document.createElement('div');
-                    hole.className = 'hole';
-                    hole.id = 'hole_' + f;
+                    let hole = document.createElement('div'); hole.className = 'hole'; hole.id = 'hole_' + f;
                     c.querySelector('.front').appendChild(hole);
                 }
                 CUBE.appendChild(c);
             }
         }
 
+        // Center-Connected 3D Rounded Pipes
         paths.forEach(path => {
             for(let i=0; i<path.length-1; i++) {
                 let g1 = path[i], g2 = path[i+1];
-                let p1 = getGlobalPos(Math.floor(g1/9), g1%9);
-                let p2 = getGlobalPos(Math.floor(g2/9), g2%9);
+                let p1 = getGlobalPos(Math.floor(g1/9), g1%9), p2 = getGlobalPos(Math.floor(g2/9), g2%9);
+                let diffs = (p1.x !== p2.x ? 1 : 0) + (p1.y !== p2.y ? 1 : 0) + (p1.z !== p2.z ? 1 : 0);
                 
-                let dx = p2.x - p1.x, dy = p2.y - p1.y, dz = p2.z - p1.z;
-                let dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
-                let cx = p1.x + dx/2, cy = p1.y + dy/2, cz = p1.z + dz/2;
-                
-                let ax = dz, ay = 0, az = -dx;
-                let len = Math.sqrt(ax*ax + az*az);
-                let angle = Math.acos(dy / dist) * 180 / Math.PI;
+                let segments =[];
+                if (diffs <= 1) {
+                    segments.push(createPipeDOM(p1, p2));
+                } else {
+                    let C = getOuterCorner(p1, p2);
+                    let v1 = normalize(p1.x - C.x, p1.y - C.y, p1.z - C.z);
+                    let v2 = normalize(p2.x - C.x, p2.y - C.y, p2.z - C.z);
+                    let R = 20; 
+                    
+                    let cStart = { x: C.x + v1.x*R, y: C.y + v1.y*R, z: C.z + v1.z*R };
+                    let cEnd = { x: C.x + v2.x*R, y: C.y + v2.y*R, z: C.z + v2.z*R };
 
-                if (len < 0.001) { ax = 1; az = 0; angle = dy < 0 ? 180 : 0; } else { ax /= len; az /= len; }
-
-                let pipe = document.createElement('div');
-                pipe.className = 'pipe';
-                pipe.style.width = '8px'; pipe.style.height = dist + 'px';
-                pipe.style.transform = `translate3d(${cx - 4}px, ${cy - dist/2}px, ${cz}px) rotate3d(${ax}, ${ay}, ${az}, ${angle}deg)`;
+                    segments.push(createPipeDOM(p1, cStart)); 
+                    segments.push(...createRoundedCorner(C, v1, v2, R)); 
+                    segments.push(createPipeDOM(cEnd, p2)); 
+                }
                 
-                ['front','back','left','right'].forEach(fn => {
-                    let pf = document.createElement('div');
-                    pf.className = 'p-face ' + fn;
-                    pipe.appendChild(pf);
-                });
-                
-                CUBE.appendChild(pipe);
-                let minG = Math.min(g1, g2), maxG = Math.max(g1, g2);
-                if (!pipeElements[minG]) pipeElements[minG] = {};
-                pipeElements[minG][maxG] = pipe;
+                pipeElements[g1] = pipeElements[g1] || {};
+                pipeElements[g1][g2] = segments; 
             }
         });
     }
 
-    function init() {
-        const tubesContainer = document.getElementById('tubes');
-        COLORS.forEach(color => {
-            let t = document.createElement('div');
-            t.className = 'tube';
-            t.style.backgroundColor = color;
-            t.onclick = (e) => triggerPourAnimation(color, e.currentTarget);
-            tubesContainer.appendChild(t);
-        });
+    async function generateNewLevel() {
+        document.getElementById('level-display').innerText = `Level ${currentLevel}`;
+        document.getElementById('overlay-loading').style.display = 'flex';
+        await new Promise(r => setTimeout(r, 50)); 
 
-        generatePaths();
+        generatePathsForLevel(currentLevel);
         build3DEnvironment();
 
-        // Assign 1 Unique Color per Face to the final block
-        let shuffledColors = [...COLORS].sort(() => Math.random() - 0.5);
-        for(let f = 0; f < 6; f++) {
-            let targetBlockId = paths[f][8];
-            faceTargetColors[f] = shuffledColors[f];
-            blockColor[targetBlockId] = shuffledColors[f];
-        }
+        let shuffledColors =[...COLORS].sort(() => Math.random() - 0.5);
+        for(let f = 0; f < 6; f++) faceTargetColors[f] = shuffledColors[f];
 
+        restartLevel();
         CUBE.style.transform = cubeMatrix.toString();
         updateHighlights();
+        document.getElementById('overlay-loading').style.display = 'none';
+    }
 
-        // Paint the initialized targets visually
+    function restartLevel() {
+        history =[]; isGameOver = false; blockColor = new Array(54).fill(null);
+        document.getElementById('overlay-gameover').style.display = 'none';
+        document.getElementById('overlay-win').style.display = 'none';
+
         for(let f = 0; f < 6; f++) {
-            paintBlock(paths[f][8], blockColor[paths[f][8]]);
+            let endB = paths[f][8];
+            blockColor[endB] = faceTargetColors[Math.floor(endB / 9)];
         }
+        repaintAll();
+    }
+
+    function nextLevel() { currentLevel++; generateNewLevel(); }
+    function saveState() { history.push({ blocks:[...blockColor], gameOver: isGameOver }); }
+
+    function undo() {
+        if (history.length === 0 || isAnimating) return;
+        let lastState = history.pop();
+        blockColor =[...lastState.blocks]; isGameOver = lastState.gameOver;
+        document.getElementById('overlay-gameover').style.display = isGameOver ? 'flex' : 'none';
+        repaintAll();
     }
 
     const faceNormals =[{f:0, x:0,y:0,z:1}, {f:1, x:0,y:0,z:-1}, {f:2, x:1,y:0,z:0}, {f:3, x:-1,y:0,z:0}, {f:4, x:0,y:-1,z:0}, {f:5, x:0,y:1,z:0}];
@@ -337,13 +450,21 @@
         if (top !== -1) document.getElementById('hole_' + top).classList.add('active-top-hole');
     }
 
-    // High Contrast Block/Pipe Painting Rules
+    function repaintAll() {
+        document.querySelectorAll('.fluid').forEach(f => { f.style.height = '0%'; f.style.top = '0%'; });
+        for(let g=0; g<54; g++) paintBlock(g, blockColor[g]);
+        // Let CSS transitions clear before applying pipes
+        setTimeout(() => finalizePipes(), 50); 
+    }
+
+    // UPDATED to apply White Glassy CSS structure natively via JS
     function paintBlock(g, color) {
         let cb = document.getElementById('cubelet_' + g);
+        if(!cb) return;
         cb.querySelectorAll('.c-face').forEach(f => {
-            f.style.backgroundColor = color ? color : '#e2e8f0'; 
-            f.style.borderColor = color ? color : '#94a3b8';
-            f.style.boxShadow = color ? `inset 0 0 15px rgba(0,0,0,0.4), 0 0 12px ${color}` : 'inset 0 0 8px rgba(0,0,0,0.2)';
+            f.style.backgroundColor = color ? color : 'rgba(255, 255, 255, 0.15)'; 
+            f.style.borderColor = color ? color : 'rgba(255, 255, 255, 0.6)';
+            f.style.boxShadow = color ? `inset 0 0 15px rgba(0,0,0,0.4), 0 0 12px ${color}` : 'inset 0 0 15px rgba(255,255,255,0.5), inset 0 0 5px rgba(255,255,255,1)';
         });
         if(g % 9 === 4) {
              let hole = document.getElementById('hole_' + Math.floor(g/9));
@@ -351,31 +472,29 @@
         }
     }
 
-    function paintPipe(g1, g2, color) {
-        let minG = Math.min(g1, g2), maxG = Math.max(g1, g2);
-        let p = pipeElements[minG][maxG];
-        if (!p) return;
-        p.querySelectorAll('.p-face').forEach(f => {
-            f.style.backgroundColor = color ? color : '#cbd5e1';
-            f.style.borderColor = color ? color : '#64748b';
-            f.style.boxShadow = color ? `0 0 12px ${color}` : 'inset 0 0 6px rgba(0,0,0,0.3)';
-        });
-    }
-
     function finalizePipes() {
         paths.forEach(path => {
             for(let i=0; i<path.length-1; i++) {
                 let g1 = path[i], g2 = path[i+1];
                 let c1 = blockColor[g1], c2 = blockColor[g2];
-                if (c1 && c2 && c1 === c2) paintPipe(g1, g2, c1);
-                else paintPipe(g1, g2, null);
+                let segments = pipeElements[g1]?.[g2];
+                if (!segments) continue;
+                
+                let solidC = (c1 && c2 && c1 === c2) ? c1 : null;
+                segments.forEach(pipe => {
+                    let fluids = pipe.querySelectorAll('.fluid');
+                    if (solidC) {
+                        fluids.forEach(f => { f.style.backgroundColor = solidC; f.style.boxShadow = `0 0 10px ${solidC}`; f.style.height = '100%'; f.style.top = '0%'; });
+                    } else {
+                        fluids.forEach(f => { f.style.height = '0%'; f.style.top = '0%'; });
+                    }
+                });
             }
         });
     }
 
-    // Advanced Tube Flying & Validation Animation
     function triggerPourAnimation(color, tubeElement) {
-        if (isAnimating) return;
+        if (isAnimating || isGameOver) return;
         let topFace = getTopFaceId();
         let path = paths[topFace];
         
@@ -383,46 +502,38 @@
         for(let i = path.length - 1; i >= 0; i--) {
             if (blockColor[path[i]] === null) { targetIdx = i; break; }
         }
-        if (targetIdx === -1) return; // Ignore if face is already fully filled
+        if (targetIdx === -1) return; 
 
+        saveState();
         isAnimating = true;
-        let isCorrectColor = (color === faceTargetColors[topFace]);
+
+        let targetBlock = path[targetIdx];
+        let targetFace = Math.floor(targetBlock / 9);
+        let isCorrectColor = (color === faceTargetColors[targetFace]); 
 
         let tubeRect = tubeElement.getBoundingClientRect();
         let hole = document.getElementById('hole_' + topFace);
         let holeRect = hole.getBoundingClientRect();
 
         let clone = tubeElement.cloneNode(true);
-        clone.style.position = 'fixed';
-        clone.style.left = tubeRect.left + 'px';
-        clone.style.top = tubeRect.top + 'px';
-        clone.style.margin = '0';
-        clone.style.zIndex = '9999';
-        clone.style.transition = 'none';
+        clone.style.position = 'fixed'; clone.style.left = tubeRect.left + 'px'; clone.style.top = tubeRect.top + 'px';
+        clone.style.margin = '0'; clone.style.zIndex = '9999'; clone.style.transition = 'none';
         document.body.appendChild(clone);
-
         tubeElement.style.opacity = '0';
 
         let destX = holeRect.left + holeRect.width / 2 - tubeRect.left - tubeRect.width / 2;
         let destY = holeRect.top - tubeRect.top - tubeRect.height + 15;
 
-        // Tube moves to center block
         let moveIn = clone.animate([
             { transform: 'translate(0px, 0px) rotate(0deg)' },
             { transform: `translate(${destX}px, ${destY}px) rotate(20deg)` }
         ], { duration: 400, easing: 'ease-in-out', fill: 'forwards' });
 
         moveIn.onfinish = () => {
-            let drop = document.createElement('div');
-            drop.className = 'paint-drop';
-            drop.style.backgroundColor = color;
-            drop.style.boxShadow = `0 0 10px ${color}`;
-
-            let dropStartX = holeRect.left + holeRect.width / 2 - 5;
-            let dropStartY = holeRect.top - 15;
-            
-            drop.style.left = dropStartX + 'px';
-            drop.style.top = dropStartY + 'px';
+            let drop = document.createElement('div'); drop.className = 'paint-drop';
+            drop.style.backgroundColor = color; drop.style.boxShadow = `0 0 10px ${color}`;
+            drop.style.left = (holeRect.left + holeRect.width / 2 - 5) + 'px';
+            drop.style.top = (holeRect.top - 15) + 'px';
             document.body.appendChild(drop);
 
             let dropAnim = drop.animate([
@@ -432,102 +543,96 @@
 
             dropAnim.onfinish = () => {
                 drop.remove();
-
-                // Send Tube Back immediately
                 let moveOut = clone.animate([
                     { transform: `translate(${destX}px, ${destY}px) rotate(20deg)` },
                     { transform: 'translate(0px, 0px) rotate(0deg)' }
                 ], { duration: 400, easing: 'ease-in-out', fill: 'forwards' });
 
-                moveOut.onfinish = () => {
-                    clone.remove();
-                    tubeElement.style.opacity = '1';
-                };
+                moveOut.onfinish = () => { clone.remove(); tubeElement.style.opacity = '1'; };
 
-                if (!isCorrectColor) {
-                    // Rule 2: GAME OVER state
-                    triggerGameOver();
-                } else {
-                    // Valid pour -> proceed with filling animation
-                    startInternalFlow(topFace, color, targetIdx, path);
-                }
+                startInternalFlow(topFace, color, targetIdx, path, isCorrectColor);
             };
         };
     }
 
-    function triggerGameOver() {
-        let overlay = document.createElement('div');
-        overlay.style.position = 'fixed';
-        overlay.style.top = '0'; overlay.style.left = '0';
-        overlay.style.width = '100vw'; overlay.style.height = '100vh';
-        overlay.style.backgroundColor = 'rgba(255, 0, 0, 0.4)';
-        overlay.style.zIndex = '10000';
-        overlay.style.pointerEvents = 'none';
-        document.body.appendChild(overlay);
-
-        setTimeout(() => {
-            alert("❌ GAME OVER!\nYou poured the wrong color. Each side must contain exactly 1 unique color!");
-            location.reload();
-        }, 100);
-    }
-
-    // Physical Flowing Animation inside pipes
-    function startInternalFlow(topFace, color, targetIdx, path) {
-        let current = 0;
-        let flowInterval = setInterval(() => {
-            if (current > 0) {
-                let prev = path[current - 1];
-                paintBlock(prev, blockColor[prev]); 
-                if (current <= targetIdx) paintPipe(prev, path[current], null); 
-            }
-            if (current < targetIdx) {
-                let currB = path[current];
-                paintBlock(currB, color);
-                paintPipe(currB, path[current + 1], color);
-                current++;
-            } 
-            else if (current === targetIdx) {
-                clearInterval(flowInterval);
-                blockColor[path[targetIdx]] = color;
-                paintBlock(path[targetIdx], color);
+    async function startInternalFlow(topFace, color, targetIdx, path, isCorrectColor) {
+        for (let i = 0; i < targetIdx; i++) {
+            let currB = path[i], nextB = path[i+1];
+            paintBlock(currB, color);
+            
+            let segments = pipeElements[currB][nextB];
+            for (let pipe of segments) {
+                let fluids = pipe.querySelectorAll('.fluid');
+                fluids.forEach(f => { f.style.backgroundColor = color; f.style.boxShadow = `0 0 10px ${color}`; });
                 
-                finalizePipes();
-                isAnimating = false;
-                checkWin();
+                let dist = parseFloat(pipe.style.height);
+                let dur = Math.max(dist * 2.5, 20);
+                
+                await Promise.all(Array.from(fluids).map(f => 
+                    f.animate([{ height: '0%' }, { height: '100%' }], { duration: dur, easing: 'linear', fill: 'forwards' }).finished
+                ));
+                fluids.forEach(f => f.style.height = '100%');
             }
-        }, 70);
-    }
+        }
 
-    function checkWin() {
-        // Rule 3: Win state when all 54 blocks perfectly filled
-        let filledBlocks = blockColor.filter(c => c !== null).length;
-        if (filledBlocks === 54) {
-            setTimeout(() => alert('🎉 YOU WIN! You perfectly mapped every color!'), 300);
+        let targetB = path[targetIdx];
+        blockColor[targetB] = color; 
+        paintBlock(targetB, color);
+
+        for (let i = 0; i < targetIdx; i++) {
+            let currB = path[i], nextB = path[i+1];
+            paintBlock(currB, blockColor[currB]); 
+            
+            let segments = pipeElements[currB][nextB];
+            for (let pipe of segments) {
+                let fluids = pipe.querySelectorAll('.fluid');
+                let dist = parseFloat(pipe.style.height);
+                let dur = Math.max(dist * 2.0, 20);
+                
+                await Promise.all(Array.from(fluids).map(f => 
+                    f.animate([{ height: '100%', top: '0%' }, { height: '0%', top: '100%' }], { duration: dur, easing: 'linear', fill: 'forwards' }).finished
+                ));
+                fluids.forEach(f => { f.style.height = '0%'; f.style.top = '0%'; });
+            }
+        }
+
+        finalizePipes();
+        isAnimating = false;
+
+        if (!isCorrectColor) {
+            isGameOver = true;
+            document.getElementById('overlay-gameover').style.display = 'flex';
+        } else {
+            let filledBlocks = blockColor.filter(c => c !== null).length;
+            if (filledBlocks === 54) setTimeout(() => document.getElementById('overlay-win').style.display = 'flex', 300);
         }
     }
 
-    // Intuitive Drag Rotation
+    // Swipe Rotation Controls
     let isDragging = false, lastPos = {x:0, y:0};
     document.addEventListener('pointerdown', e => {
-        if (e.target.closest('#tubes') || isAnimating) return; 
+        if (e.target.closest('#tubes') || e.target.closest('.controls-bar') || e.target.closest('.overlay') || isAnimating) return; 
         isDragging = true; lastPos = { x: e.clientX, y: e.clientY };
     });
-    
     document.addEventListener('pointermove', e => {
         if (!isDragging) return;
         let dx = e.clientX - lastPos.x, dy = e.clientY - lastPos.y;
         lastPos = { x: e.clientX, y: e.clientY };
-        
-        let rot = new DOMMatrix().rotate(-dy * 0.4, dx * 0.4, 0);
-        cubeMatrix = rot.multiply(cubeMatrix);
-        
+        cubeMatrix = new DOMMatrix().rotate(-dy * 0.4, dx * 0.4, 0).multiply(cubeMatrix);
         CUBE.style.transform = cubeMatrix.toString();
         updateHighlights();
     });
-    
     document.addEventListener('pointerup', () => isDragging = false);
 
-    init();
+    window.onload = () => {
+        const tubesContainer = document.getElementById('tubes');
+        COLORS.forEach(color => {
+            let t = document.createElement('div'); t.className = 'tube'; t.style.backgroundColor = color;
+            t.onclick = (e) => triggerPourAnimation(color, e.currentTarget);
+            tubesContainer.appendChild(t);
+        });
+        generateNewLevel();
+    };
 </script>
 </body>
 </html>

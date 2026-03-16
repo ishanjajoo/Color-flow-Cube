@@ -101,7 +101,6 @@
         background: #111; border-radius: 50%; transform: translate(-50%, -50%);
         box-shadow: inset 0 3px 8px rgba(0,0,0,1); border: 2px solid rgba(255,255,255,0.8); transition: all 0.3s ease;
     }
-    /* Bright Neon Cyan to pop out against the white glass */
     .active-top-hole { border-color: #00ffff !important; box-shadow: 0 0 18px 4px rgba(0,255,255,0.8), inset 0 3px 8px #000 !important; }
 
     /* Distinct Solid Grey Pipes */
@@ -112,6 +111,7 @@
         border: 1px solid #6b7280;
         box-shadow: inset 0 0 6px rgba(0,0,0,0.5); 
         transition: all 0.2s;
+        overflow: hidden; /* Prevents visual bleeding of fluid layer */
     }
     /* Creates perfectly centered 12x12 pipes */
     .p-face.front  { transform: translateZ(6px); }
@@ -311,9 +311,7 @@
         pipe.className = 'pipe'; 
         pipe.style.width = '12px'; pipe.style.height = (dist + 2) + 'px'; 
         pipe.style.transformOrigin = '6px 0px 6px';
-        pipe.style.transform = `translate3d(${pStart.x - 6}px, ${pStart.y}px, ${pStart.z - 6}px) rotate3d(${ax}, ${ay}, ${az}, ${angle}deg) translateY(-1px)`;
-        
-        ['front','back','left','right'].forEach(fn => {
+        pipe.style.transform = `translate3d(${pStart.x - 6}px, ${pStart.y}px, ${pStart.z - 6}px) rotate3d(${ax}, ${ay}, ${az}, ${angle}deg) translateY(-1px)`;['front','back','left','right'].forEach(fn => {
             let pf = document.createElement('div'); pf.className = 'p-face ' + fn;
             let fluid = document.createElement('div'); fluid.className = 'fluid';
             pf.appendChild(fluid); pipe.appendChild(pf);
@@ -453,11 +451,9 @@
     function repaintAll() {
         document.querySelectorAll('.fluid').forEach(f => { f.style.height = '0%'; f.style.top = '0%'; });
         for(let g=0; g<54; g++) paintBlock(g, blockColor[g]);
-        // Let CSS transitions clear before applying pipes
         setTimeout(() => finalizePipes(), 50); 
     }
 
-    // UPDATED to apply White Glassy CSS structure natively via JS
     function paintBlock(g, color) {
         let cb = document.getElementById('cubelet_' + g);
         if(!cb) return;
@@ -556,9 +552,9 @@
     }
 
     async function startInternalFlow(topFace, color, targetIdx, path, isCorrectColor) {
+        // Step 1: Forward fluid flow down pipes ONLY. Bypassing paintBlock to prevent blocks from visually lighting up prematurely
         for (let i = 0; i < targetIdx; i++) {
             let currB = path[i], nextB = path[i+1];
-            paintBlock(currB, color);
             
             let segments = pipeElements[currB][nextB];
             for (let pipe of segments) {
@@ -575,13 +571,14 @@
             }
         }
 
+        // Settles permanently into the target block
         let targetB = path[targetIdx];
         blockColor[targetB] = color; 
         paintBlock(targetB, color);
 
+        // Step 2: Draining the tail of liquid from the path.
         for (let i = 0; i < targetIdx; i++) {
             let currB = path[i], nextB = path[i+1];
-            paintBlock(currB, blockColor[currB]); 
             
             let segments = pipeElements[currB][nextB];
             for (let pipe of segments) {

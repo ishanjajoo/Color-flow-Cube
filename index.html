@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Space Color Flow 3D</title>
+<title>Space Color Flow 3D - Mixing Update</title>
 <style>
     * { box-sizing: border-box; user-select: none; }
     body {
@@ -36,7 +36,7 @@
         display: flex; flex-direction: column; align-items: center; z-index: 10; pointer-events: none;
     }
     h1 { margin: 15px 0 5px 0; font-size: 22px; text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 0 10px rgba(0,0,0,0.8); }
-    p.instructions { font-size: 13px; color: #ddd; margin: 0 0 10px 0; text-align: center; max-width: 340px; text-shadow: 0 0 5px #000; }
+    p.instructions { font-size: 13px; color: #ddd; margin: 0 0 10px 0; text-align: center; max-width: 360px; text-shadow: 0 0 5px #000; }
 
     /* Controls */
     .controls-bar { display: flex; gap: 10px; margin-bottom: 15px; align-items: center; pointer-events: auto; }
@@ -48,9 +48,9 @@
     }
     .btn:active { transform: translateY(2px); background: rgba(255,255,255,0.2); }
 
-    #tubes { display: flex; gap: 12px; pointer-events: auto; }
+    #tubes { display: flex; gap: 18px; pointer-events: auto; }
     .tube {
-        width: 35px; height: 60px; border-radius: 0 0 15px 15px;
+        width: 38px; height: 65px; border-radius: 0 0 18px 18px;
         border: 2px solid rgba(255,255,255,0.9); border-top: none; cursor: pointer; position: relative;
         box-shadow: 0 5px 15px rgba(0,0,0,0.8), 0 0 15px rgba(255,255,255,0.2); transition: transform 0.1s;
     }
@@ -69,7 +69,7 @@
         z-index: 10000; pointer-events: auto;
     }
     .overlay h2 { font-size: 32px; margin-bottom: 10px; }
-    .overlay p { font-size: 16px; margin-bottom: 25px; text-align: center; max-width: 300px; }
+    .overlay p { font-size: 16px; margin-bottom: 25px; text-align: center; max-width: 320px; }
     .overlay .btn-group { display: flex; gap: 15px; }
     .overlay .btn { padding: 12px 24px; font-size: 16px; font-weight: bold; background: #007aff; border-color: #007aff;}
 
@@ -82,7 +82,7 @@
     .cubelet { position: absolute; width: 36px; height: 36px; transform-style: preserve-3d; }
     .c-face {
         position: absolute; width: 36px; height: 36px; 
-        background: #f1f5f9; /* Solid off-white */
+        background: #f1f5f9; 
         border: 1px solid #cbd5e1;
         border-radius: 4px; 
         box-shadow: inset 0 0 6px rgba(0,0,0,0.1);
@@ -111,9 +111,8 @@
         border: 1px solid #6b7280;
         box-shadow: inset 0 0 6px rgba(0,0,0,0.3); 
         transition: all 0.2s;
-        overflow: hidden; /* Contains the fluid perfectly */
+        overflow: hidden; 
     }
-    /* Creates perfectly centered 12x12 pipes */
     .p-face.front  { transform: translateZ(6px); }
     .p-face.back   { transform: rotateY(180deg) translateZ(6px); }
     .p-face.left   { transform: rotateY(-90deg) translateZ(6px); }
@@ -121,7 +120,6 @@
     .p-face.top    { transform: rotateX(90deg) translateZ(6px); }
     .p-face.bottom { transform: rotateX(-90deg) translateZ(6px); }
 
-    /* Animated Liquid Inside Pipes */
     .fluid {
         position: absolute; top: 0%; left: 0%; width: 100%; height: 0%;
         background: transparent; transition: none;
@@ -133,8 +131,8 @@
     <div id="space-bg"></div>
 
     <div id="ui-layer">
-        <h1>Fluid Flow 3D</h1>
-        <p class="instructions">Trace the Series to the next empty block. Pour the color of the Face that block sits on!</p>
+        <h1>Color Mixing 3D</h1>
+        <p class="instructions">Mix colors! Red+Yellow=Orange, Red+Blue=Violet, Blue+Yellow=Green.<br>Trace to the target block and pour up to 2 colors to match it!</p>
         
         <div class="controls-bar">
             <span id="level-display">Level 1</span>
@@ -142,6 +140,7 @@
             <button class="btn" onclick="restartLevel()">Restart</button>
         </div>
 
+        <!-- Only 3 Primary Color Tubes Available -->
         <div id="tubes"></div>
     </div>
 
@@ -155,8 +154,8 @@
     </div>
 
     <div id="overlay-gameover" class="overlay">
-        <h2 style="color: #ff3b30;">Wrong Color!</h2>
-        <p>You poured a color that doesn't match the face the block resides on. 1 color per face!</p>
+        <h2 style="color: #ff3b30;">Invalid Mix!</h2>
+        <p>You poured a color that cannot create the target block's color. Check your mixes carefully!</p>
         <div class="btn-group">
             <button class="btn" onclick="undo()">Undo Move</button>
             <button class="btn" onclick="restartLevel()" style="background: #333; border-color: #333;">Restart</button>
@@ -181,25 +180,50 @@
         spaceBg.appendChild(star);
     }
 
-    const COLORS =['#ff3b30', '#34c759', '#007aff', '#ffcc00', '#ff9500', '#af52de'];
-    const CUBE = document.getElementById('cube');
+    // Color Mixing Mapping
+    const PRIMARY_TUBES = ['red', 'blue', 'yellow'];
+    const ALL_COLORS =['red', 'blue', 'yellow', 'orange', 'violet', 'green'];
     
-    // Core Dimensions
+    const COLOR_HEX = {
+        'red': '#ff3b30', 'blue': '#007aff', 'yellow': '#ffcc00',
+        'orange': '#ff9500', 'violet': '#af52de', 'green': '#34c759',
+        'invalid': '#555555' 
+    };
+
+    function getComponents(colorId) {
+        if (colorId === 'red') return ['red'];
+        if (colorId === 'blue') return ['blue'];
+        if (colorId === 'yellow') return ['yellow'];
+        if (colorId === 'orange') return ['red', 'yellow'];
+        if (colorId === 'violet') return ['red', 'blue'];
+        if (colorId === 'green') return['blue', 'yellow'];
+        return[];
+    }
+
+    function getMix(comps) {
+        if (comps.length === 0) return null;
+        if (comps.length === 1) return comps[0];
+        if (comps.includes('red') && comps.includes('yellow')) return 'orange';
+        if (comps.includes('red') && comps.includes('blue')) return 'violet';
+        if (comps.includes('blue') && comps.includes('yellow')) return 'green';
+        return 'invalid';
+    }
+
+    const CUBE = document.getElementById('cube');
     const SPACING = 85; 
     const DEPTH = 145; 
-    const CUBE_RADIUS = DEPTH - 18; // Maps coordinates EXACTLY to the 3D center of every block!
+    const CUBE_RADIUS = DEPTH - 18; 
 
     let currentLevel = 1;
     let cubeMatrix = new DOMMatrix().rotate(-25, 35, 0); 
     let paths =[]; 
-    let blockColor = new Array(54).fill(null);
+    let blockState =[]; 
     let faceTargetColors = new Array(6).fill(null);
     let pipeElements = {}; 
     let history =[];
     let isAnimating = false;
     let isGameOver = false;
 
-    // Mathematical Map of Connections
     let adj = Array.from({length: 54}, () =>[]);
     function addE(f1, b1, f2, b2) {
         let g1 = f1 * 9 + b1, g2 = f2 * 9 + b2;
@@ -211,9 +235,8 @@
     }
     const interEdges = [[0,0,4,6],[0,1,4,7],[0,2,4,8],[0,2,2,0],[0,5,2,3],[0,8,2,6],[0,6,5,0],[0,7,5,1],[0,8,5,2],[0,0,3,2],[0,3,3,5],[0,6,3,8],[1,0,4,2],[1,1,4,1],[1,2,4,0],[1,2,3,0],[1,5,3,3],[1,8,3,6],[1,6,5,8],[1,7,5,7],[1,8,5,6],[1,0,2,2],[1,3,2,5],[1,6,2,8],[2,0,4,8],[2,1,4,5],[2,2,4,2],[2,6,5,2],[2,7,5,5],[2,8,5,8],[3,0,4,0],[3,1,4,3],[3,2,4,6],[3,6,5,6],[3,7,5,3],[3,8,5,0]];
     interEdges.forEach(e => addE(e[0], e[1], e[2], e[3]));
-    adj = adj.map(n => [...new Set(n)]);
+    adj = adj.map(n =>[...new Set(n)]);
 
-    // Generates Adaptive Levels
     function generatePathsForLevel(targetLevel) {
         let numThrees = Math.min(targetLevel - 1, 6);
         let success = false;
@@ -223,7 +246,7 @@
             for(let i=0; i<numThrees; i++) targetFaceCounts[i] = 3;
             targetFaceCounts.sort(() => Math.random() - 0.5);
 
-            let tempPaths = [[4], [13],[22],[31], [40],[49]];
+            let tempPaths = [[4], [13],[22],[31],[40],[49]];
             let visited = new Array(54).fill(false);[4,13,22,31,40,49].forEach(n => visited[n] = true);
 
             let res = doDfs(0, 1, tempPaths, visited, targetFaceCounts, Date.now(), 40);
@@ -251,7 +274,6 @@
             let nFace = Math.floor(n / 9);
             let createsNewFace = !faceSet.has(nFace);
             if (createsNewFace && faceSet.size >= targetFaceCounts[pIdx]) continue; 
-            
             let neededFaces = targetFaceCounts[pIdx] - faceSet.size;
             if (!createsNewFace && (9 - step) <= neededFaces) continue; 
             
@@ -268,7 +290,6 @@
         return null;
     }
 
-    // Geometry Helpers
     function normalize(dx, dy, dz) {
         let len = Math.hypot(dx, dy, dz);
         if (len === 0) return {x:0, y:0, z:0};
@@ -346,7 +367,6 @@
     function build3DEnvironment() {
         CUBE.innerHTML = ''; pipeElements = {};
 
-        // 1. Center-Connected 3D Rounded Pipes FIRST (Fixes CSS rendering order illusion)
         paths.forEach(path => {
             for(let i=0; i<path.length-1; i++) {
                 let g1 = path[i], g2 = path[i+1];
@@ -375,7 +395,6 @@
             }
         });
 
-        // 2. Draw Opaque Blocks SECOND
         for(let f=0; f<6; f++) {
             let fTrans =['', 'rotateY(180deg)', 'rotateY(90deg)', 'rotateY(-90deg)', 'rotateX(90deg)', 'rotateX(-90deg)'][f];
             for(let b=0; b<9; b++) {
@@ -402,7 +421,7 @@
         generatePathsForLevel(currentLevel);
         build3DEnvironment();
 
-        let shuffledColors =[...COLORS].sort(() => Math.random() - 0.5);
+        let shuffledColors =[...ALL_COLORS].sort(() => Math.random() - 0.5);
         for(let f = 0; f < 6; f++) faceTargetColors[f] = shuffledColors[f];
 
         restartLevel();
@@ -412,24 +431,35 @@
     }
 
     function restartLevel() {
-        history =[]; isGameOver = false; blockColor = new Array(54).fill(null);
+        history =[]; isGameOver = false; 
+        blockState = Array.from({length: 54}, () => ({components:[], locked: false}));
+        
         document.getElementById('overlay-gameover').style.display = 'none';
         document.getElementById('overlay-win').style.display = 'none';
 
+        // Pre-fill target block logic
         for(let f = 0; f < 6; f++) {
             let endB = paths[f][8];
-            blockColor[endB] = faceTargetColors[Math.floor(endB / 9)];
+            let targetColor = faceTargetColors[Math.floor(endB / 9)];
+            blockState[endB] = { components: getComponents(targetColor), locked: true };
         }
         repaintAll();
     }
 
     function nextLevel() { currentLevel++; generateNewLevel(); }
-    function saveState() { history.push({ blocks:[...blockColor], gameOver: isGameOver }); }
+    
+    function saveState() { 
+        history.push({ 
+            blocks: blockState.map(s => ({ components:[...s.components], locked: s.locked })), 
+            gameOver: isGameOver 
+        }); 
+    }
 
     function undo() {
         if (history.length === 0 || isAnimating) return;
         let lastState = history.pop();
-        blockColor =[...lastState.blocks]; isGameOver = lastState.gameOver;
+        blockState = lastState.blocks.map(s => ({ components: [...s.components], locked: s.locked })); 
+        isGameOver = lastState.gameOver;
         document.getElementById('overlay-gameover').style.display = isGameOver ? 'flex' : 'none';
         repaintAll();
     }
@@ -452,22 +482,23 @@
 
     function repaintAll() {
         document.querySelectorAll('.fluid').forEach(f => { f.style.height = '0%'; f.style.top = '0%'; });
-        for(let g=0; g<54; g++) paintBlock(g, blockColor[g]);
+        for(let g=0; g<54; g++) paintBlock(g, getMix(blockState[g].components));
         setTimeout(() => finalizePipes(), 50); 
     }
 
-    // Opaque White Glassy CSS
-    function paintBlock(g, color) {
+    function paintBlock(g, mixId) {
         let cb = document.getElementById('cubelet_' + g);
         if(!cb) return;
+        let colorHex = mixId ? COLOR_HEX[mixId] : null;
+        
         cb.querySelectorAll('.c-face').forEach(f => {
-            f.style.backgroundColor = color ? color : '#f1f5f9'; 
-            f.style.borderColor = color ? color : '#cbd5e1';
-            f.style.boxShadow = color ? `inset 0 0 15px rgba(0,0,0,0.4), 0 0 12px ${color}` : 'inset 0 0 6px rgba(0,0,0,0.1)';
+            f.style.backgroundColor = colorHex ? colorHex : '#f1f5f9'; 
+            f.style.borderColor = colorHex ? colorHex : '#cbd5e1';
+            f.style.boxShadow = colorHex ? `inset 0 0 15px rgba(0,0,0,0.4), 0 0 12px ${colorHex}` : 'inset 0 0 6px rgba(0,0,0,0.1)';
         });
         if(g % 9 === 4) {
              let hole = document.getElementById('hole_' + Math.floor(g/9));
-             if(hole) hole.style.backgroundColor = color ? color : '#111';
+             if(hole) hole.style.backgroundColor = colorHex ? colorHex : '#111';
         }
     }
 
@@ -475,11 +506,15 @@
         paths.forEach(path => {
             for(let i=0; i<path.length-1; i++) {
                 let g1 = path[i], g2 = path[i+1];
-                let c1 = blockColor[g1], c2 = blockColor[g2];
+                let mix1 = getMix(blockState[g1].components);
+                let mix2 = getMix(blockState[g2].components);
+                let locked1 = blockState[g1].locked;
+                let locked2 = blockState[g2].locked;
+                
                 let segments = pipeElements[g1]?.[g2];
                 if (!segments) continue;
                 
-                let solidC = (c1 && c2 && c1 === c2) ? c1 : null;
+                let solidC = (locked1 && locked2 && mix1 === mix2) ? COLOR_HEX[mix1] : null;
                 segments.forEach(pipe => {
                     let fluids = pipe.querySelectorAll('.fluid');
                     if (solidC) {
@@ -492,14 +527,14 @@
         });
     }
 
-    function triggerPourAnimation(color, tubeElement) {
+    function triggerPourAnimation(colorId, tubeElement) {
         if (isAnimating || isGameOver) return;
         let topFace = getTopFaceId();
         let path = paths[topFace];
         
         let targetIdx = -1;
         for(let i = path.length - 1; i >= 0; i--) {
-            if (blockColor[path[i]] === null) { targetIdx = i; break; }
+            if (!blockState[path[i]].locked) { targetIdx = i; break; }
         }
         if (targetIdx === -1) return; 
 
@@ -508,7 +543,20 @@
 
         let targetBlock = path[targetIdx];
         let targetFace = Math.floor(targetBlock / 9);
-        let isCorrectColor = (color === faceTargetColors[targetFace]); 
+        let faceTargetColor = faceTargetColors[targetFace];
+        let faceTargetComps = getComponents(faceTargetColor);
+
+        let currentComps = blockState[targetBlock].components;
+        let isCorrectColor = true;
+        let newComps =[...currentComps, colorId];
+
+        // Validations for mixing mechanics
+        if (currentComps.includes(colorId)) {
+            isCorrectColor = false; // Cannot mix same color twice into a block
+        } else {
+            isCorrectColor = newComps.every(c => faceTargetComps.includes(c));
+        }
+        let isLocking = isCorrectColor && (newComps.length === faceTargetComps.length);
 
         let tubeRect = tubeElement.getBoundingClientRect();
         let hole = document.getElementById('hole_' + topFace);
@@ -530,7 +578,7 @@
 
         moveIn.onfinish = () => {
             let drop = document.createElement('div'); drop.className = 'paint-drop';
-            drop.style.backgroundColor = color; drop.style.boxShadow = `0 0 10px ${color}`;
+            drop.style.backgroundColor = COLOR_HEX[colorId]; drop.style.boxShadow = `0 0 10px ${COLOR_HEX[colorId]}`;
             drop.style.left = (holeRect.left + holeRect.width / 2 - 5) + 'px';
             drop.style.top = (holeRect.top - 15) + 'px';
             document.body.appendChild(drop);
@@ -549,20 +597,22 @@
 
                 moveOut.onfinish = () => { clone.remove(); tubeElement.style.opacity = '1'; };
 
-                startInternalFlow(topFace, color, targetIdx, path, isCorrectColor);
+                startInternalFlow(topFace, colorId, targetIdx, path, isCorrectColor, newComps, isLocking);
             };
         };
     }
 
-    async function startInternalFlow(topFace, color, targetIdx, path, isCorrectColor) {
-        // Skips lighting up intermediate blocks so fluid stays strictly IN pipes
+    async function startInternalFlow(topFace, colorId, targetIdx, path, isCorrectColor, newComps, isLocking) {
+        let fluidHex = COLOR_HEX[colorId];
+
+        // Fluid flowing down the pipes ONLY
         for (let i = 0; i < targetIdx; i++) {
             let currB = path[i], nextB = path[i+1];
             
             let segments = pipeElements[currB][nextB];
             for (let pipe of segments) {
                 let fluids = pipe.querySelectorAll('.fluid');
-                fluids.forEach(f => { f.style.backgroundColor = color; f.style.boxShadow = `0 0 10px ${color}`; });
+                fluids.forEach(f => { f.style.backgroundColor = fluidHex; f.style.boxShadow = `0 0 10px ${fluidHex}`; });
                 
                 let dist = parseFloat(pipe.style.height);
                 let dur = Math.max(dist * 2.5, 20);
@@ -574,10 +624,10 @@
             }
         }
 
-        // Settles directly into the target block at the end
+        // Settles and MIXES into the target block
         let targetB = path[targetIdx];
-        blockColor[targetB] = color; 
-        paintBlock(targetB, color);
+        blockState[targetB] = { components: newComps, locked: isLocking };
+        paintBlock(targetB, getMix(newComps));
 
         // Drains the trailing liquid smoothly out of the pipes
         for (let i = 0; i < targetIdx; i++) {
@@ -603,7 +653,7 @@
             isGameOver = true;
             document.getElementById('overlay-gameover').style.display = 'flex';
         } else {
-            let filledBlocks = blockColor.filter(c => c !== null).length;
+            let filledBlocks = blockState.filter(s => s.locked).length;
             if (filledBlocks === 54) setTimeout(() => document.getElementById('overlay-win').style.display = 'flex', 300);
         }
     }
@@ -626,9 +676,9 @@
 
     window.onload = () => {
         const tubesContainer = document.getElementById('tubes');
-        COLORS.forEach(color => {
-            let t = document.createElement('div'); t.className = 'tube'; t.style.backgroundColor = color;
-            t.onclick = (e) => triggerPourAnimation(color, e.currentTarget);
+        PRIMARY_TUBES.forEach(colorId => {
+            let t = document.createElement('div'); t.className = 'tube'; t.style.backgroundColor = COLOR_HEX[colorId];
+            t.onclick = (e) => triggerPourAnimation(colorId, e.currentTarget);
             tubesContainer.appendChild(t);
         });
         generateNewLevel();

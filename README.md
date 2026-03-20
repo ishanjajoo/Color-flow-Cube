@@ -1,2 +1,2 @@
 # Color-flow-Cube
-Strategic game , in which you have to decide the steps to color the whole cube
+Strategic game , in which you have to control the flow of sand to sort it into different tubes
